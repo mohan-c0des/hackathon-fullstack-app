@@ -1,0 +1,19 @@
+body{
+  place-items: center;
+}
+.upper{
+  display: flex;
+  flex-direction: column;
+
+}
+
+.search-input{
+  width: 100%;
+  flex-grow: 1;
+
+}
+
+.domain-buttons {
+  width: 100px;
+  align-items:stretch;
+}
