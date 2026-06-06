@@ -1,7 +1,5 @@
 body{
   place-items: center;
-  background-color: black;
-  color: white;
 }
 .upper{
   display: flex;
