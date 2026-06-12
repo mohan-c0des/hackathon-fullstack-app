@@ -1,19 +1,12 @@
-body{
-  place-items: center;
-}
-.upper{
-  display: flex;
-  flex-direction: column;
+@import "tailwindcss";
 
-}
-
-.search-input{
-  width: 100%;
-  flex-grow: 1;
-
-}
-
-.domain-buttons {
-  width: 100px;
-  align-items:stretch;
+/* Your custom scrollbar hiding trick */
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+  }
+  .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+  }
 }
