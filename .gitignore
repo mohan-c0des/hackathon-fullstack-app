@@ -1,2 +1,6 @@
 my-fastapi-app/.venv/
 my-react-app/node_modules/
+
+.env
+__pycache__/
+*.pyc

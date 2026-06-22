@@ -1,9 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
 
 const PURPOSE_PRESETS = ["Academic / Studying", "Travel / Tourism", "Family & Friends", "Business Operations"];
-
+const INDIC_LANGUAGES = [
+  { code: "en-IN", label: "English (Default)", hasAudio: false },
+  { code: "hi-IN", label: "Hindi", hasAudio: true },
+  { code: "te-IN", label: "Telugu", hasAudio: true },
+  { code: "ta-IN", label: "Tamil", hasAudio: true },
+  { code: "bn-IN", label: "Bengali", hasAudio: true },
+  { code: "mr-IN", label: "Marathi", hasAudio: true }
+];
 const TABS = [
   { id: "briefing", label: "AI Briefing" }, { id: "rules", label: "Rules" },
+  { id: "present news", label: "Present News" }, { id: "neighbors", label: "Similar Countries" },
+  { id: "public safty level", label: "public safty level"},
   { id: "culture", label: "Culture & Language" }, { id: "currency", label: "Currency" },
   { id: "places", label: "Popular Places" }, { id: "economy", label: "Economy" },
   { id: "political", label: "Political Status" }, { id: "allies", label: "Friends & Enemies" },
@@ -12,10 +21,134 @@ const TABS = [
   { id: "health", label: "Health" }, { id: "visa", label: "Visa & Entry" }
 ];
 
-export default function CanvasOverlay({ state, dispatch }) {
+// Custom Lightweight Markdown Parser
+const renderMarkdownBeautifully = (text) => {
+  if (!text) return null;
+  return text.split('\n').map((line, i) => {
+    if (line.startsWith('### ')) return <h3 key={i} className="text-[1.3rem] font-bold text-violet-300 mt-8 mb-3">{line.replace('### ', '')}</h3>;
+    if (line.startsWith('## ')) return <h2 key={i} className="text-[1.6rem] font-extrabold text-white mt-10 mb-4 border-b border-slate-700 pb-2">{line.replace('## ', '')}</h2>;
+    if (line.startsWith('# ')) return <h1 key={i} className="text-[2rem] font-black text-sky-400 mt-10 mb-6">{line.replace('# ', '')}</h1>;
+    
+    const parseBold = (str) => {
+      return str.split(/(\*\*.*?\*\*)/g).map((part, j) => 
+        part.startsWith('**') && part.endsWith('**') 
+          ? <strong key={j} className="text-white font-bold tracking-wide">{part.slice(2, -2)}</strong> 
+          : part
+      );
+    };
+
+    if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
+      const content = line.trim().substring(2);
+      return <li key={i} className="ml-6 list-disc mb-3 text-slate-300 pl-2 marker:text-violet-500">{parseBold(content)}</li>;
+    }
+    
+    if (!line.trim()) return <div key={i} className="h-3"></div>;
+
+    return <p key={i} className="mb-4 text-slate-300 leading-[1.8] text-[1.05rem]">{parseBold(line)}</p>;
+  });
+};
+
+export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab, sendDoubt, handleCloseCanvas }) {
   const [showCanvasDrop, setShowCanvasDrop] = useState(false);
   const canvasPurposeRef = useRef(null);
+  
+  const chatEndRef = useRef(null);
+  const audioRef = useRef(null); // --- NEW: Audio Tracker ---
+  
+  // --- NEW: Sarvam AI Integration States ---
+  const [selectedLang, setSelectedLang] = useState("en-IN");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [translatedContent, setTranslatedContent] = useState(null); // Added state to hold the translation
 
+  // Clear translation and STOP AUDIO if the user switches tabs or generates a new briefing
+  useEffect(() => {
+    setSelectedLang("en-IN");
+    setTranslatedContent(null);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [state.activeTab, state.briefingData, state.tabContent]);
+
+  const activeContent = state.activeTab === "briefing" 
+    ? state.briefingData 
+    : state.tabContent[state.activeTab];
+
+  // Dynamically show the translated content if it exists, otherwise fallback to English
+  const displayContent = translatedContent || activeContent;
+
+  // Real function hooked up to FastAPI
+  const handleTranslate = async (langCode) => {
+    setSelectedLang(langCode);
+    if (langCode === "en-IN") {
+      setTranslatedContent(null); // Instantly revert back to English
+      return; 
+    }
+    
+    setIsTranslating(true);
+    
+    try {
+      const response = await fetch("http://localhost:8000/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: activeContent, target_lang: langCode })
+      });
+      const result = await response.json();
+      
+      setTranslatedContent(result.data);
+    } catch (error) {
+      console.error("Translation failed:", error);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Real function for TTS Audio hooked up to FastAPI with Play/Pause support
+  const handleListen = async () => {
+    // --- THE STOP LOGIC ---
+    if (isPlaying) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0; // Reset
+      }
+      setIsPlaying(false);
+      return; 
+    }
+
+    setIsPlaying(true);
+    
+    try {
+      const response = await fetch("http://localhost:8000/api/audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: displayContent, target_lang: selectedLang })
+      });
+      const result = await response.json();
+      
+      if (result.audio_base64) {
+        // Track the audio in the ref so we can kill it later
+        audioRef.current = new Audio(`data:audio/wav;base64,${result.audio_base64}`);
+        audioRef.current.onended = () => setIsPlaying(false);
+        audioRef.current.onerror = () => setIsPlaying(false);
+        audioRef.current.play();
+      } else {
+        setIsPlaying(false);
+      }
+    } catch (error) {
+      console.error("Audio generation failed:", error);
+      setIsPlaying(false);
+    }
+  };
+
+  // Smooth scroll for chat
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [state.doubtsHistory, displayContent]); 
+
+  // Click outside to close dropdown
   useEffect(() => {
     const handleClick = (e) => {
       if (canvasPurposeRef.current && !canvasPurposeRef.current.contains(e.target)) setShowCanvasDrop(false);
@@ -24,52 +157,60 @@ export default function CanvasOverlay({ state, dispatch }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const submitBackendRequest = () => {
-    console.log(`🚀 FastAPI Request -> Country: ${state.selectedCountry}, Purpose: ${state.purposeInput}`);
+  const handleTabClick = (tabId) => {
+    dispatch({ type: "SET_TAB", payload: tabId });
+    fetchTab(tabId);
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0f172a] border-t-2 border-violet-500 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] relative z-20">
+    <div className={`
+      flex flex-col min-h-0 bg-[#0f172a] shadow-[0_-10px_30px_rgba(0,0,0,0.5)] relative z-20
+      transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
+      ${state.isBriefingActive 
+        ? "flex-1 opacity-100 translate-y-0 border-t-2 border-violet-500" 
+        : "h-0 flex-none opacity-0 translate-y-20 overflow-hidden border-t-0 border-r-transparent"}
+    `}>
       
-      <div className="absolute -top-[20px] left-1/2 -translate-x-1/2 z-30">
-        <button className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white border-2 border-emerald-900 py-1.5 px-6 rounded-full font-extrabold tracking-wide shadow-md transition-transform hover:-translate-y-0.5">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
-          </svg>
-          START
-        </button>
-      </div>
+      {/* Custom Animations & Scrollbar Styles */}
+      <style>{`
+        @keyframes slideDownFade {
+          0% { opacity: 0; transform: translateY(-15px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-reveal {
+          animation: slideDownFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #090d16; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+      `}</style>
 
-      {/* Header Bar & Tabs */}
-      <div className="flex justify-between bg-slate-800 border-b border-slate-700 py-2">
-        {/* The Parent Container (Needs overflow-x-auto and hidden scrollbars) */}
-      <div className="flex overflow-x-auto flex-1 px-4 items-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        
-        {TABS.map((tab, idx) => (
-          <button 
-            key={tab.id} 
-            data-active={state.activeTab === tab.id}
-            onClick={() => dispatch({ type: "SET_TAB", payload: tab.id })}
-            className={`
-              shrink-0
-              relative px-5 py-2 border text-[0.9rem] rounded-[12px] mr-[0.6rem] whitespace-nowrap 
-              transition-all font-semibold cursor-pointer
-              border-slate-600 text-slate-200 bg-slate-900/40 shadow-md
-              hover:shadow-lg hover:border-violet-400 hover:text-violet-300 hover:bg-slate-800/60
-              active:scale-[0.97] active:shadow-sm
-              data-[active=true]:border-violet-500 data-[active=true]:text-violet-400 data-[active=true]:bg-slate-800/70 data-[active=true]:shadow-lg
-              after:content-[''] after:absolute after:left-1/2 after:bottom-0 after:h-[2px] after:w-0 after:bg-violet-400 
-              after:transition-all after:duration-300 after:-translate-x-1/2 hover:after:w-full
-              data-[active=true]:after:w-full
-              ${idx === 0 ? "mr-[2.5rem]" : ""}
-            `}
-          >
-            {tab.label}
-          </button>
-
-        ))}
-        
-      </div>
+      {/* Header Bar & Tabs (FLEX-NONE = Static) */}
+      <div className="flex-none flex justify-between bg-slate-800 border-b border-slate-700 py-2">
+        <div className="flex overflow-x-auto flex-1 px-4 items-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map((tab, idx) => (
+            <button 
+              key={tab.id} 
+              data-active={state.activeTab === tab.id}
+              onClick={() => handleTabClick(tab.id)}
+              className={`
+                shrink-0 relative px-5 py-2 border text-[0.9rem] rounded-[12px] mr-[0.6rem] whitespace-nowrap 
+                transition-all font-semibold cursor-pointer
+                border-slate-600 text-slate-200 bg-slate-900/40 shadow-md
+                hover:shadow-lg hover:border-violet-400 hover:text-violet-300 hover:bg-slate-800/60
+                active:scale-[0.97] active:shadow-sm
+                data-[active=true]:border-violet-500 data-[active=true]:text-violet-400 data-[active=true]:bg-slate-800/70 data-[active=true]:shadow-lg
+                after:content-[''] after:absolute after:left-1/2 after:bottom-0 after:h-[2px] after:w-0 after:bg-violet-400 
+                after:transition-all after:duration-300 after:-translate-x-1/2 hover:after:w-full
+                data-[active=true]:after:w-full
+                ${idx === 0 ? "mr-[2.5rem]" : ""}
+              `}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         
         {/* Window Controls */}
         <div className="flex items-center px-4 gap-3">
@@ -82,19 +223,19 @@ export default function CanvasOverlay({ state, dispatch }) {
           </button>
           <button 
             className="text-slate-400 hover:bg-red-500 hover:text-white px-2 py-1 rounded-md text-[1.2rem] transition-all duration-300 cursor-pointer" 
-            title="Close Briefing Canvas"
-            onClick={() => dispatch({ type: "CLOSE_CANVAS" })}
+            title="Terminate AI and Close"
+            onClick={handleCloseCanvas} 
           >
             ✖
           </button>
         </div>
       </div>
 
-      {/* Main Body */}
-      <div className="flex-1 p-6 overflow-y-auto flex flex-col relative border-radius-lg">
+      {/* Main Body (FLEX-1 MIN-H-0 = Parent boundary lock) */}
+      <div className="flex-1 flex flex-col min-h-0 p-6 relative">
         
-        {/* Purpose Row */}
-        <div className="flex items-center gap-4 mb-6 relative" ref={canvasPurposeRef}>
+        {/* Purpose Row (FLEX-NONE = Static) */}
+        <div className="flex-none flex items-center gap-4 mb-6 relative" ref={canvasPurposeRef}>
           <label className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sky-400 font-bold">{state.selectedCountry}</label>
           <div className="flex flex-1 max-w-[350px]">
             <input 
@@ -103,8 +244,12 @@ export default function CanvasOverlay({ state, dispatch }) {
             />
             <button className="px-3 bg-slate-900/60 border border-slate-700 rounded-r-lg text-slate-500 hover:text-violet-500 cursor-pointer" onClick={() => setShowCanvasDrop(!showCanvasDrop)}>▾</button>
           </div>
-          <button className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-[30px] text-[1.1rem] font-semibold transition-colors shadow-md cursor-pointer" onClick={submitBackendRequest}>
-            Confirm
+          <button 
+            className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-[30px] text-[1.1rem] font-semibold transition-colors shadow-md cursor-pointer disabled:opacity-50" 
+            onClick={() => fetchBriefing(state.selectedCountry, state.purposeInput)}
+            disabled={state.isLoading}
+          >
+            {state.isLoading && state.activeTab === 'briefing' ? "Loading..." : "Confirm"}
           </button>
 
           {showCanvasDrop && (
@@ -118,36 +263,143 @@ export default function CanvasOverlay({ state, dispatch }) {
           )}
         </div>
 
-        {/* Backend Stream Box */}
-        <div className="flex-1 bg-[#090d16] border border-slate-800 rounded-lg p-6 text-slate-300 shadow-inner">
-          <h2 className="text-[1.5rem] font-bold text-slate-50">{TABS.find(t => t.id === state.activeTab)?.label} Data</h2>
-          <hr className="border-t border-slate-800 my-4" />
-          <p className="text-slate-400 leading-relaxed">
-            This space is ready for FastAPI injection. When you click "Start" or submit the arrow, the backend 
-            will stream data regarding <strong className="text-slate-200">{state.selectedCountry}</strong> optimized for: <strong className="text-slate-200">{state.purposeInput || "General Outline"}</strong>.
-          </p>
-        </div>
-
-        {/* Doubts Bubble */}
-        <div className="absolute bottom-5 right-5 z-30">
-          {state.showDoubtsInput ? (
-            <div className="flex gap-2 bg-slate-800 p-2 rounded-[30px] border border-violet-500 shadow-[0_10px_25px_rgba(0,0,0,0.6)] items-center">
-              <input 
-                type="text" placeholder="Ask AI a specific doubt..." autoFocus
-                className="bg-transparent border-none text-white px-4 outline-none w-[250px]"
-                value={state.doubtsText} onChange={(e) => dispatch({ type: "SET_DOUBTS_TEXT", payload: e.target.value })} 
-              />
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded-[20px] font-semibold transition-colors cursor-pointer">Send</button>
-              <button className="text-slate-400 hover:bg-red-500 hover:text-white px-2 py-1 rounded-full text-[1.2rem] transition-all duration-300 cursor-pointer" onClick={() => dispatch({ type: "TOGGLE_DOUBTS", payload: false })}>✖</button>
+        {/* Backend Stream Box (FLEX-1 OVERFLOW-Y-AUTO = THIS IS THE ONLY THING THAT SCROLLS) */}
+        <div className="flex-1 overflow-y-auto bg-[#090d16] border border-slate-800 rounded-lg p-8 shadow-inner custom-scrollbar relative">
+          
+          {state.isLoading && !activeContent && !state.doubtsHistory.length ? (
+            <div className="flex items-center justify-center h-full text-violet-400 animate-pulse font-semibold text-lg tracking-widest">
+              [ CONNECTING TO INTELLIGENCE CORE... ]
             </div>
           ) : (
-            <button 
-              className="bg-violet-500 hover:bg-violet-400 text-white px-5 py-3 rounded-[30px] font-bold text-[1rem] shadow-[0_4px_15px_rgba(139,92,246,0.5)] cursor-pointer transition-all hover:-translate-y-1"
-              onClick={() => dispatch({ type: "TOGGLE_DOUBTS", payload: true })}
-            >
-              Doubts?
-            </button>
+            <div className="max-w-5xl mx-auto w-full animate-reveal" key={state.activeTab}>
+              
+              {/* --- SARVAM AI CONTROL BAR --- */}
+              {activeContent && !state.isLoading && (
+                <div className="flex justify-end items-center gap-4 mb-4 border-b border-slate-800 pb-3">
+                  
+                  {/* Translate Dropdown */}
+                  <div className="relative">
+                    <select 
+                      className="appearance-none bg-slate-800 border border-slate-700 text-slate-300 py-1.5 pl-4 pr-8 rounded-lg outline-none focus:border-violet-500 cursor-pointer text-sm font-semibold shadow-sm transition-colors hover:bg-slate-700"
+                      value={selectedLang}
+                      onChange={(e) => handleTranslate(e.target.value)}
+                      disabled={isTranslating}
+                    >
+                      {INDIC_LANGUAGES.map(lang => (
+                        <option key={lang.code} value={lang.code}>{lang.label}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                  </div>
+
+                  {/* Listen Circular Button */}
+                  <button 
+                    onClick={handleListen}
+                    disabled={selectedLang === "en-IN" || !INDIC_LANGUAGES.find(l => l.code === selectedLang)?.hasAudio || (isTranslating && !isPlaying)}
+                    className={`
+                      flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 shadow-md
+                      ${selectedLang !== "en-IN" && INDIC_LANGUAGES.find(l => l.code === selectedLang)?.hasAudio
+                        ? "bg-violet-600 hover:bg-violet-500 hover:scale-110 hover:shadow-[0_0_15px_rgba(139,92,246,0.6)] text-white cursor-pointer" 
+                        : "bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed opacity-50"}
+                      ${isPlaying ? "animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.6)] !bg-red-500" : ""}
+                    `}
+                    title={isPlaying ? "Stop Audio" : "Listen to Briefing"}
+                  >
+                    {isPlaying ? (
+                      // STOP ICON (Square)
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                        <path fillRule="evenodd" d="M4.5 7.5a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      // VOLUME ICON
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                        <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 0 0 1.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06ZM18.584 5.106a.75.75 0 0 1 1.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 0 1-1.06-1.06 8.25 8.25 0 0 0 0-11.668.75.75 0 0 1 0-1.06Z" />
+                        <path d="M15.932 7.757a.75.75 0 0 1 1.061 0 6 6 0 0 1 0 8.486.75.75 0 0 1-1.06-1.061 4.5 4.5 0 0 0 0-6.364.75.75 0 0 1 0-1.06Z" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Loading Indicator for Translation */}
+                  {isTranslating && <span className="text-violet-400 text-sm animate-pulse ml-2 font-semibold tracking-wide">Translating Data...</span>}
+                  
+                </div>
+              )}
+
+              {/* Beautiful Rendered Content - Swapped to displayContent! */}
+              {displayContent && (
+                <div className={`mb-10 transition-opacity duration-300 ${isTranslating ? "opacity-30" : "opacity-100"}`}>
+                  {renderMarkdownBeautifully(displayContent)}
+                </div>
+              )}
+              
+              {/* Chat History */}
+              {state.doubtsHistory.length > 0 && (
+                <div className="mt-12 pt-8 border-t border-slate-800/80">
+                  {state.doubtsHistory.map((msg, idx) => (
+                    <div key={idx} className={`mb-6 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`
+                        max-w-[80%] p-5 rounded-2xl text-[1.05rem] leading-[1.7] shadow-md
+                        ${msg.sender === 'user' 
+                          ? 'bg-violet-600/20 border border-violet-500/30 text-violet-100 rounded-tr-sm' 
+                          : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-sm'}
+                      `}>
+                        {msg.sender === 'ai' ? renderMarkdownBeautifully(msg.text) : msg.text}
+                      </div>
+                    </div>
+                  ))}
+                  {state.isLoading && state.doubtsHistory[state.doubtsHistory.length - 1]?.sender === 'user' && (
+                    <div className="text-slate-500 text-sm italic mb-6 animate-pulse">Agent is analyzing live data...</div>
+                  )}
+                  {/* Invisible element to anchor the auto-scroll */}
+                  <div ref={chatEndRef} className="h-4"></div>
+                </div>
+              )}
+            </div>
           )}
+        </div>
+
+        {/* Doubts Bubble (ABSOLUTE = Floating fixed in place relative to the main body) */}
+        <div className="absolute bottom-10 right-10 z-30 flex items-center justify-end h-[50px]">
+          <button 
+            className={`
+              bg-violet-500 hover:bg-violet-400 text-white rounded-[30px] font-bold text-[1.1rem] 
+              shadow-[0_4px_15px_rgba(139,92,246,0.5)] cursor-pointer transition-all duration-300
+              ${state.showDoubtsInput ? 'w-0 h-0 opacity-0 overflow-hidden p-0' : 'px-6 py-3 hover:-translate-y-1 w-auto h-auto opacity-100'}
+            `}
+            onClick={() => dispatch({ type: "TOGGLE_DOUBTS", payload: true })}
+          >
+            Doubts?
+          </button>
+
+          <div className={`
+            flex gap-2 bg-slate-800 rounded-[30px] border border-violet-500 shadow-[0_10px_25px_rgba(0,0,0,0.6)] items-center
+            transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
+            ${state.showDoubtsInput ? 'w-[450px] p-2 opacity-100' : 'w-0 p-0 opacity-0 border-none'}
+          `}>
+            <input 
+              type="text" placeholder="Ask AI a specific doubt..." 
+              autoFocus={state.showDoubtsInput}
+              className="bg-transparent border-none text-white px-4 outline-none flex-1 min-w-0"
+              value={state.doubtsText} 
+              onChange={(e) => dispatch({ type: "SET_DOUBTS_TEXT", payload: e.target.value })} 
+              onKeyDown={(e) => e.key === 'Enter' && sendDoubt(state.doubtsText)}
+            />
+            <button 
+              className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-1.5 rounded-[20px] font-semibold transition-colors cursor-pointer disabled:opacity-50 flex-none"
+              onClick={() => sendDoubt(state.doubtsText)}
+              disabled={state.isLoading}
+            >
+              Send
+            </button>
+            <button 
+              className="text-slate-400 hover:bg-red-500 hover:text-white px-2 py-1 rounded-full text-[1.2rem] transition-all duration-300 cursor-pointer flex-none" 
+              onClick={() => dispatch({ type: "TOGGLE_DOUBTS", payload: false })}
+            >
+              ✖
+            </button>
+          </div>
         </div>
 
       </div>
