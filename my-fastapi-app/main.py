@@ -1,19 +1,33 @@
 import os
 import httpx
 import ast
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Header
-from fastapi.middleware.cors import CORSMiddleware
-from langchain_core.messages import HumanMessage
-from contextlib import asynccontextmanager
-from typing import Optional
+import uuid
 import traceback
+import datetime
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
+from langchain_core.messages import HumanMessage, AIMessage
+from contextlib import asynccontextmanager
+from typing import Optional, Any, cast
 
-from app.schemas import SidebarRequest, Tabs, Doubt, TranslatePayload
-from app.agent import graph_agent
+# Schemas
+from app.schemas import (
+    SidebarRequest, Tabs, Doubt, TranslatePayload, 
+    JourneyInteractPayload, UserRegister, UserLogin, 
+    TokenResponse, PasswordVerify, UserUpdate
+)
+# AI Agents & DB
+from app.BriefingAgent import graph_agent
+from app.JourneyAgent import boomer_agent
 from app.database import graph_db
 
+# Security
+from app.security import get_password_hash, verify_password, create_access_token, get_current_user
+
 load_dotenv()
+
 # -------------------------
 # Lifecycle Context Manager
 # -------------------------
@@ -50,220 +64,116 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------
-# Endpoints
-# -------------------------
-@app.post("/api/briefing", response_model=dict)
-async def generate_country_briefing(
-    request: SidebarRequest, 
-    x_user_id: Optional[str] = Header(default="guest_user")
-):
-    """Generates the initial comprehensive country briefing optimized for the user's purpose."""
+
+# ==========================================
+# OPTIONAL AUTHENTICATION HANDLER
+# ==========================================
+# This allows endpoints to accept guests WITHOUT throwing a 401 error
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+async def get_optional_user(token: Optional[str] = Depends(oauth2_scheme_optional)):
+    """Returns the user ID if logged in, or 'guest_user' if skipping registration."""
+    if not token:
+        return "guest_user"
     try:
-        # 1. Log the search in Neo4j (Non-blocking tracking)
-        try:
-            await graph_db.log_user_search(user_id=str(x_user_id), country_name=request.country, purpose=request.purpose)
-        except Exception as e:
-            print(f"[GRAPH WARNING] Could not log search: {str(e)}")
+        # If they provided a token, strictly verify it using our existing auth logic
+        return await get_current_user(token)
+    except HTTPException:
+        # If the token is invalid/expired, fall back to guest instead of crashing
+        return "guest_user"
 
-        # 2. Extract similar matching options from Graph engine
-        suggestions = []
-        try:
-            suggestions = await graph_db.get_similar_countries(country_name=request.country)
-        except Exception as e:
-            print(f"[GRAPH WARNING] Could not pull recommendations: {str(e)}")
 
-        # ==========================================
-        # NEW: CACHE INTERCEPTOR
-        # ==========================================
-        try:
-            cached_content = await graph_db.get_cached_briefing(str(x_user_id), request.country, request.purpose)
-            if cached_content:
-                print(f"[CACHE HIT] Returning saved briefing for {request.country} ({request.purpose})")
-                return {
-                    "data": cached_content,
-                    "graph_recommendations": suggestions
-                }
-        except Exception as e:
-            print(f"[GRAPH WARNING] Cache check failed: {str(e)}")
-        # ==========================================
+# ==========================================
+# 1. AUTHENTICATION ROUTES
+# ==========================================
+@app.post("/api/auth/register", response_model=TokenResponse)
+async def register_user(user: UserRegister):
+    existing_user = await graph_db.get_user_by_email(user.email)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-        # 3. Trigger the AI Agent
-        prompt = (
-            f"GOAL: INITIAL BRIEFING.\n"
-            f"Target Country: {request.country}\n"
-            f"Travel Purpose: {request.purpose}\n"
-            f"Task: Execute your briefing tool to gather data. Then, synthesize a beautifully structured "
-            f"overview tailored strictly to the purpose of '{request.purpose}'. Include relevant suggestions."
-        )
-        
-        result = await graph_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
-        raw_content = result["messages"][-1].content
-
-        # If Gemini returned a list of blocks, join them into a single string
-        if isinstance(raw_content, list):
-            final_text = "".join([block.get("text", "") for block in raw_content if isinstance(block, dict)])
-        else:
-            final_text = str(raw_content)
-        
-        # ==========================================
-        # NEW: SAVE TO CACHE
-        # ==========================================
-        try:
-            await graph_db.save_briefing(str(x_user_id), request.country, request.purpose, final_text)
-        except Exception as e:
-            print(f"[GRAPH WARNING] Could not save briefing to cache: {str(e)}")
-        # ==========================================
-
-        # 4. Return both the AI text AND the Neo4j graph recommendations
+    user_id = str(uuid.uuid4())
+    hashed_password = get_password_hash(user.password)
+    
+    user_data = {
+        "id": user_id,
+        "name": user.name,
+        "email": user.email,
+        "password_hash": hashed_password,
+        "role": user.role,
+        "age": user.age,
+        "country": user.country,
+        "origin_city": user.origin_city,
+        "nationality": user.nationality,
+        "citizenship": user.citizenship,
+        "health_condition": user.health_condition,
+        "passport_expiry": user.passport_expiry,
+        "passport_blank_pages": user.passport_blank_pages
+    }
+    
+    try:
+        await graph_db.create_user(user_id, user_data)
+        access_token = create_access_token(data={"sub": user_id})
         return {
-            "data": final_text,
-            "graph_recommendations": suggestions
+            "access_token": access_token, 
+            "token_type": "bearer",
+            "user": {"id": user_id, "name": user.name, "email": user.email}
         }
-        
     except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-
-@app.post("/api/tab", response_model=dict)
-async def generate_tab_briefing(request: Tabs):
-    """Generates a deep-dive report on a specific tab/category."""
-    try:
-        prompt = (
-            f"GOAL: TAB DEEP DIVE.\n"
-            f"Target Country: {request.country}\n"
-            f"Travel Purpose: {request.purpose}\n"
-            f"Selected Tab: {request.tabName}\n"
-            f"Task: Execute your tab information tool. Filter the massive data payload to extract "
-            f"ONLY what is relevant to '{request.tabName}', viewed through the lens of '{request.purpose}'. "
-            f"Provide a highly detailed, organized breakdown."
-        )
-        
-        result = await graph_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
-        raw_content = result["messages"][-1].content
-
-        # If Gemini returned a list of blocks, join them into a single string
-        if isinstance(raw_content, list):
-            final_text = "".join([block.get("text", "") for block in raw_content if isinstance(block, dict)])
-        else:
-            final_text = str(raw_content)
-
-        return {"data": final_text}
-
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/doubt", response_model=dict)
-async def answer_doubt(request: Doubt):
-    """Answers a specific user doubt using live data and internal knowledge."""
-    try:
-        prompt = (
-            f"GOAL: RESOLVE USER DOUBT.\n"
-            f"Target Country: {request.country}\n"
-            f"Travel Purpose: {request.purpose}\n"
-            f"Current Context (Tab): {request.tabName}\n"
-            f"User Doubt: {request.doubt}\n"
-            f"Task: Execute your doubt resolution tool. Read the data, and answer the user's doubt directly, "
-            f"intelligently, and accurately. If the APIs lack the specific answer, use your internal expertise to answer it."
-        )
-        
-        result = await graph_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
-        raw_content = result["messages"][-1].content
-
-        # If Gemini returned a list of blocks, join them into a single string
-        if isinstance(raw_content, list):
-            final_text = "".join([block.get("text", "") for block in raw_content if isinstance(block, dict)])
-        else:
-            final_text = str(raw_content)
-        
-        return {"data": final_text}
-
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
+@app.post("/api/auth/login", response_model=TokenResponse)
+async def login_user(user: UserLogin):
+    db_user = await graph_db.get_user_by_email(user.email)
     
-@app.post("/api/translate", response_model=dict)
-async def translate_text(payload: TranslatePayload):
-    """Hits the Sarvam Translate API to convert English to Indic languages."""
+    # Safe dictionary access (.get) prevents KeyError
+    if not db_user or not verify_password(user.password, db_user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    api_key = os.getenv("SARVAM_API_KEY")
-    if not api_key:
-        print("[CRITICAL] SARVAM_API_KEY is missing from .env file!")
-        return {"data": payload.text} 
-
-    url = "https://api.sarvam.ai/translate"
-    clean_text = payload.text.replace("**", "").replace("###", "").replace("##", "").replace("#", "")
-    safe_translate_text = clean_text[:1950] 
-
-    req_body = {
-        "input": safe_translate_text,
-        "source_language_code": "en-IN",
-        "target_language_code": payload.target_lang,
-        "speaker_gender": "Male",
-        "mode": "formal",
-        # FIX: Added the mandatory :v1 suffix
-        "model": "sarvam-translate:v1" 
+    access_token = create_access_token(data={"sub": db_user.get("id")})
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user": {
+            "id": db_user.get("id"), 
+            "name": db_user.get("name", "Traveler"), # Defaults to Traveler if old account
+            "email": db_user.get("email")
+        }
     }
-    
-    headers = {"api-subscription-key": api_key, "Content-Type": "application/json"}
-    
+
+@app.get("/api/user/profile", response_model=dict)
+async def fetch_user_profile(user_id: str = Depends(get_current_user)):
+    """Fetches securely using the strict JWT token. Guests cannot access profiles."""
+    profile = await graph_db.get_user_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"data": profile}
+
+@app.post("/api/user/verify-password")
+async def verify_user_password(payload: PasswordVerify, user_id: str = Depends(get_current_user)):
+    """Verifies a user's password before allowing them to edit their profile."""
+    db_user = await graph_db.get_user_by_id(user_id)
+    if not db_user or not verify_password(payload.password, db_user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Incorrect password.")
+    return {"status": "success"}
+
+@app.put("/api/user/profile")
+async def update_profile(payload: UserUpdate, user_id: str = Depends(get_current_user)):
+    """Updates the user's secure travel profile in the database."""
+    # Exclude unset fields so we don't wipe out data accidentally
+    update_data = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json=req_body, headers=headers, timeout=20.0)
-            if resp.status_code != 200:
-                print(f"[SARVAM TRANSLATE ERROR] Status {resp.status_code}: {resp.text}")
-                return {"data": payload.text}
-            data = resp.json()
-            return {"data": data.get("translated_text", payload.text)}
+        await graph_db.update_user_profile(user_id, update_data)
+        return {"status": "success"}
     except Exception as e:
-        print(f"[SARVAM TRANSLATE FATAL] {str(e)}")
-        return {"data": payload.text}
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/api/audio", response_model=dict)
-async def generate_audio(payload: TranslatePayload):
-    """Hits Sarvam's Bulbul engine to convert Indic text into base64 spoken audio."""
-    
-    api_key = os.getenv("SARVAM_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="SARVAM_API_KEY is missing.")
-
-    url = "https://api.sarvam.ai/text-to-speech"
-    clean_text = payload.text.replace("**", "").replace("###", "").replace("##", "").replace("#", "")
-    safe_text = clean_text[:450] 
-
-    req_body = {
-        "inputs": [safe_text],
-        "target_language_code": payload.target_lang,
-        # FIX: Using the active v3 voice 'shreya'
-        "speaker": "shreya", 
-        "pace": 1.0,
-        "speech_sample_rate": 8000,
-        # FIX: Upgraded to bulbul:v3 and removed deprecated pitch/loudness params
-        "model": "bulbul:v3" 
-    }
-    
-    headers = {"api-subscription-key": api_key, "Content-Type": "application/json"}
-    
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json=req_body, headers=headers, timeout=30.0)
-            if resp.status_code != 200:
-                print(f"[SARVAM AUDIO ERROR] Status {resp.status_code}: {resp.text}")
-                return {"audio_base64": ""}
-            data = resp.json()
-            return {"audio_base64": data.get("audios", [""])[0]}
-    except Exception as e:
-        print(f"[SARVAM AUDIO FATAL] {str(e)}")
-        return {"audio_base64": ""}
-
+# ==========================================
+# 2. INTELLIGENCE DASHBOARD ROUTES
+# ==========================================
 
 @app.get("/api/quick-intel", response_model=dict)
-async def get_quick_hud_intel(country: str, user_id: str = "hackathon_user"):
+async def get_quick_hud_intel(country: str, user_id: str = Depends(get_optional_user)):
     """Fetches instant HUD data using Altoal API, RestCountries V5 fallback, and Neo4j."""
     
     altoal_slug = country.lower().replace(" ", "-")
@@ -421,12 +331,15 @@ async def get_quick_hud_intel(country: str, user_id: str = "hackathon_user"):
             result = await session.run(query, country=country.title())
             record = await result.single()
             if record:
-                hud_data["rec_culture"] = record["similar_culture"] or []
-                hud_data["rec_language"] = record["similar_language"] or []
-                hud_data["rec_relations"] = record["relations"] or []
-                hud_data["rec_economy"] = record["similar_economy"] or []
+                # Rigorously filter out any None/Null values returning from Neo4j
+                hud_data["rec_culture"] = [c for c in (record["similar_culture"] or []) if c is not None]
+                hud_data["rec_language"] = [l for l in (record["similar_language"] or []) if l is not None]
+                hud_data["rec_relations"] = [r for r in (record["relations"] or []) if r is not None]
+                hud_data["rec_economy"] = [e for e in (record["similar_economy"] or []) if e is not None]
+            else:
+                print(f"[GRAPH INFO] No Neo4j connections found for {country}. (Unseeded country)")
     except Exception as e:
-        pass
+        print(f"[GRAPH WARNING] Failed to fetch recommendations: {str(e)}")
 
     # 4. HACKATHON LEADER OVERRIDES (Guarantees perfect names for the presentation)
     HACKATHON_LEADER_FALLBACKS = {
@@ -449,7 +362,6 @@ async def get_quick_hud_intel(country: str, user_id: str = "hackathon_user"):
 
     # 5. NEO4J HISTORY TRACKING: Log this click to the database
     try:
-        # NOW CORRECTLY USING THE PASSED 'user_id' INSTEAD OF HARDCODING IT
         await graph_db.log_user_search(user_id, country, "Quick Intel Scan")
     except Exception as e:
         print("History Logging Error:", e)
@@ -457,29 +369,328 @@ async def get_quick_hud_intel(country: str, user_id: str = "hackathon_user"):
     # 6. ABSOLUTE REACT SAFETY NET
     for key, value in hud_data.items():
         if isinstance(value, list):
-            hud_data[key] = [extract_pure_text(i) if isinstance(i, dict) else str(i) for i in value]
+            hud_data[key] = [extract_pure_text(i) if isinstance(i, dict) else str(i) for i in value if i is not None]
         else:
             hud_data[key] = extract_pure_text(value) if isinstance(value, dict) else str(value)
 
     return {"data": hud_data}
 
+@app.post("/api/briefing", response_model=dict)
+async def generate_country_briefing(
+    request: SidebarRequest, 
+    user_id: str = Depends(get_optional_user)
+):
+    """Generates the initial comprehensive country briefing optimized for the user's purpose."""
+    try:
+        # 1. Log the search in Neo4j (Non-blocking tracking)
+        try:
+            await graph_db.log_user_search(user_id=user_id, country_name=request.country, purpose=request.purpose)
+        except Exception as e:
+            print(f"[GRAPH WARNING] Could not log search: {str(e)}")
+
+        # 2. Extract similar matching options from Graph engine
+        suggestions = []
+        try:
+            suggestions = await graph_db.get_similar_countries(country_name=request.country)
+        except Exception as e:
+            print(f"[GRAPH WARNING] Could not pull recommendations: {str(e)}")
+
+        # ==========================================
+        # CACHE INTERCEPTOR
+        # ==========================================
+        try:
+            cached_content = await graph_db.get_cached_briefing(user_id, request.country, request.purpose)
+            if cached_content:
+                print(f"[CACHE HIT] Returning saved briefing for {request.country} ({request.purpose})")
+                
+                # If they are a registered user, silently add this cache to their personal history UI
+                if user_id != "guest_user":
+                    try:
+                        await graph_db.save_briefing(user_id, request.country, request.purpose, cached_content)
+                    except Exception:
+                        pass
+                
+                return {
+                    "data": cached_content,
+                    "graph_recommendations": suggestions
+                }
+        except Exception as e:
+            print(f"[GRAPH WARNING] Cache check failed: {str(e)}")
+        # ==========================================
+
+        # 3. Trigger the AI Agent
+        prompt = (
+            f"GOAL: INITIAL BRIEFING.\n"
+            f"Target Country: {request.country}\n"
+            f"Travel Purpose: {request.purpose}\n"
+            f"Task: Execute your briefing tool to gather data. Then, synthesize a beautifully structured "
+            f"overview tailored strictly to the purpose of '{request.purpose}'. Include relevant suggestions."
+        )
+        
+        result = await graph_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
+        raw_content = result["messages"][-1].content
+
+        # If Gemini returned a list of blocks, join them into a single string
+        if isinstance(raw_content, list):
+            final_text = "".join([block.get("text", "") for block in raw_content if isinstance(block, dict)])
+        else:
+            final_text = str(raw_content)
+        
+        # ==========================================
+        # SAVE TO CACHE
+        # ==========================================
+        try:
+            await graph_db.save_briefing(user_id, request.country, request.purpose, final_text)
+        except Exception as e:
+            print(f"[GRAPH WARNING] Could not save briefing to cache: {str(e)}")
+        # ==========================================
+
+        # 4. Return both the AI text AND the Neo4j graph recommendations
+        return {
+            "data": final_text,
+            "graph_recommendations": suggestions
+        }
+        
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/tab", response_model=dict)
+async def generate_tab_briefing(request: Tabs, user_id: str = Depends(get_optional_user)):
+    """Generates a deep-dive report on a specific tab/category."""
+    try:
+        prompt = (
+            f"GOAL: TAB DEEP DIVE.\n"
+            f"Target Country: {request.country}\n"
+            f"Travel Purpose: {request.purpose}\n"
+            f"Selected Tab: {request.tabName}\n"
+            f"Task: Execute your tab information tool. Filter the massive data payload to extract "
+            f"ONLY what is relevant to '{request.tabName}', viewed through the lens of '{request.purpose}'. "
+            f"Provide a highly detailed, organized breakdown."
+        )
+        
+        result = await graph_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
+        raw_content = result["messages"][-1].content
+
+        # If Gemini returned a list of blocks, join them into a single string
+        if isinstance(raw_content, list):
+            final_text = "".join([block.get("text", "") for block in raw_content if isinstance(block, dict)])
+        else:
+            final_text = str(raw_content)
+
+        return {"data": final_text}
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/doubt", response_model=dict)
+async def answer_doubt(request: Doubt, user_id: str = Depends(get_optional_user)):
+    """Answers a specific user doubt using live data and internal knowledge."""
+    try:
+        prompt = (
+            f"GOAL: RESOLVE USER DOUBT.\n"
+            f"Target Country: {request.country}\n"
+            f"Travel Purpose: {request.purpose}\n"
+            f"Current Context (Tab): {request.tabName}\n"
+            f"User Doubt: {request.doubt}\n"
+            f"Task: Execute your doubt resolution tool. Read the data, and answer the user's doubt directly, "
+            f"intelligently, and accurately. If the APIs lack the specific answer, use your internal expertise to answer it."
+        )
+        
+        result = await graph_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
+        raw_content = result["messages"][-1].content
+
+        # If Gemini returned a list of blocks, join them into a single string
+        if isinstance(raw_content, list):
+            final_text = "".join([block.get("text", "") for block in raw_content if isinstance(block, dict)])
+        else:
+            final_text = str(raw_content)
+        
+        return {"data": final_text}
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    
+@app.post("/api/translate", response_model=dict)
+async def translate_text(payload: TranslatePayload, user_id: str = Depends(get_optional_user)):
+    """Hits the Sarvam Translate API to convert English to Indic languages."""
+    
+    api_key = os.getenv("SARVAM_API_KEY")
+    if not api_key:
+        print("[CRITICAL] SARVAM_API_KEY is missing from .env file!")
+        return {"data": payload.text} 
+
+    url = "https://api.sarvam.ai/translate"
+    clean_text = payload.text.replace("**", "").replace("###", "").replace("##", "").replace("#", "")
+    safe_translate_text = clean_text[:1950] 
+
+    req_body = {
+        "input": safe_translate_text,
+        "source_language_code": "en-IN",
+        "target_language_code": payload.target_lang,
+        "speaker_gender": "Male",
+        "mode": "formal",
+        "model": "sarvam-translate:v1" 
+    }
+    
+    headers = {"api-subscription-key": api_key, "Content-Type": "application/json"}
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json=req_body, headers=headers, timeout=20.0)
+            if resp.status_code != 200:
+                print(f"[SARVAM TRANSLATE ERROR] Status {resp.status_code}: {resp.text}")
+                return {"data": payload.text}
+            data = resp.json()
+            return {"data": data.get("translated_text", payload.text)}
+    except Exception as e:
+        print(f"[SARVAM TRANSLATE FATAL] {str(e)}")
+        return {"data": payload.text}
+
+
+@app.post("/api/audio", response_model=dict)
+async def generate_audio(payload: TranslatePayload, user_id: str = Depends(get_optional_user)):
+    """Hits Sarvam's Bulbul engine to convert Indic text into base64 spoken audio."""
+    
+    api_key = os.getenv("SARVAM_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="SARVAM_API_KEY is missing.")
+
+    url = "https://api.sarvam.ai/text-to-speech"
+    clean_text = payload.text.replace("**", "").replace("###", "").replace("##", "").replace("#", "")
+    safe_text = clean_text[:450] 
+
+    req_body = {
+        "inputs": [safe_text],
+        "target_language_code": payload.target_lang,
+        "speaker": "shubh", 
+        "pace": 1.0,
+        "speech_sample_rate": 8000,
+        "model": "bulbul:v3" 
+    }
+    
+    headers = {"api-subscription-key": api_key, "Content-Type": "application/json"}
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json=req_body, headers=headers, timeout=30.0)
+            if resp.status_code != 200:
+                print(f"[SARVAM AUDIO ERROR] Status {resp.status_code}: {resp.text}")
+                return {"audio_base64": ""}
+            data = resp.json()
+            return {"audio_base64": data.get("audios", [""])[0]}
+    except Exception as e:
+        print(f"[SARVAM AUDIO FATAL] {str(e)}")
+        return {"audio_base64": ""}
+
 # ==========================================
-# HISTORY FETCH ROUTE
+# HISTORY FETCH ROUTES
 # ==========================================
-@app.get("/api/history/{user_id}", response_model=dict)
-async def get_user_history(user_id: str):
-    """Fetches user search history directly from Neo4j."""
+
+@app.get("/api/history", response_model=dict)
+async def get_user_history(user_id: str = Depends(get_optional_user)):
+    """Fetches history using the token if available, or returns guest history."""
     try:
         records = await graph_db.get_user_search_history(user_id)
         return {"data": records}
     except Exception as e:
         return {"error": str(e)}
-    
-@app.get("/api/briefings/{user_id}", response_model=dict)
-async def get_briefing_archive(user_id: str):
-    """Fetches user's saved AI briefings directly from Neo4j."""
+
+@app.get("/api/briefings/archive", response_model=dict)
+async def get_briefing_archive(user_id: str = Depends(get_optional_user)):
+    """Fetches archives using the token if available, or returns guest archives."""
     try:
         records = await graph_db.get_user_briefing_history(user_id)
         return {"data": records}
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/api/briefings/global", response_model=dict)
+async def get_global_briefings():
+    """DEV ROUTE: Fetches all generated briefings from the global cache for testing."""
+    try:
+        records = await graph_db.get_all_global_briefings()
+        return {"data": records}
+    except Exception as e:
+        return {"error": str(e)}
+
+# ==========================================
+# JOURNEY PLANNER ROUTES
+# ==========================================
+
+@app.post("/api/journey/interact", response_model=dict)
+async def journey_interaction(payload: JourneyInteractPayload, user_id: str = Depends(get_optional_user)):
+    """Handles step-by-step state logic and chat for the Boomer Travel Concierge securely."""
+    try:
+        if payload.action == "START":
+            profile_dict = {
+                "origin_city": payload.origin_city,
+                "destination_city": payload.destination_city,
+                "citizenship": payload.citizenship,
+                "age": payload.age,
+                "purpose": payload.purpose
+            }
+            state_data = await graph_db.init_or_get_journey(user_id, payload.target_country, profile_dict)
+            user_msg = "I have entered my profile data. Please start Phase 1 (Pre-Travel)."
+            
+        else:
+            state_data = await graph_db.init_or_get_journey(user_id, payload.target_country)
+            
+            if payload.action == "NEXT_PHASE":
+                new_phase = int(state_data.get("phase", 1)) + 1
+                await graph_db.update_journey_phase(user_id, payload.target_country, new_phase)
+                state_data["phase"] = new_phase
+                user_msg = f"SYSTEM: User has requested to move to Phase {new_phase}. Execute tool and provide guidance."
+                
+            elif payload.action == "AIRPORT_ARRIVED":
+                user_msg = "I have arrived at the origin airport. What are my transit and customs instructions?"
+                
+            elif payload.action == "DESTINATION_ARRIVED":
+                user_msg = "I have landed and cleared customs! Guide me to my destination."
+                
+            else: # action == "CHAT"
+                user_msg = payload.message
+
+        history_records = await graph_db.get_journey_history(user_id, payload.target_country)
+        messages = []
+        for rec in history_records:
+            if rec["sender"] == "user":
+                messages.append(HumanMessage(content=rec["text"]))
+            else:
+                messages.append(AIMessage(content=rec["text"]))
+                
+        messages.append(HumanMessage(content=user_msg))
+
+        agent_state = {
+            "messages": messages,
+            "phase": int(state_data.get("phase", 1)),
+            "profile": {
+                "target_country": payload.target_country,
+                "origin_city": state_data.get("origin_city"),
+                "destination_city": state_data.get("destination_city"),
+                "citizenship": state_data.get("citizenship"),
+                "age": state_data.get("age"),
+                "purpose": state_data.get("purpose")
+            }
+        }
+        
+        # Cast to Any to satisfy static type checkers; runtime accepts dict-shaped state
+        result = await boomer_agent.ainvoke(cast(Any, agent_state))
+        boomer_response = result["messages"][-1].content
+
+        await graph_db.log_journey_chat(user_id, payload.target_country, "user", str(user_msg))
+        await graph_db.log_journey_chat(user_id, payload.target_country, "ai", str(boomer_response))
+
+        return {
+            "data": boomer_response,
+            "phase": state_data.get("phase", 1)
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

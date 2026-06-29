@@ -16,8 +16,9 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
         return;
       }
       try {
-        // Send the unique userId to the backend so it logs to the correct person!
-        const response = await fetch(`http://localhost:8000/api/quick-intel?country=${state.selectedCountry}&user_id=${state.userId}`);
+        // Send the secure JWT token if logged in!
+        const headers = state.token ? { "Authorization": `Bearer ${state.token}` } : {};
+        const response = await fetch(`http://localhost:8000/api/quick-intel?country=${state.selectedCountry}`, { headers });
         const result = await response.json();
         setHudIntel(result.data);
       } catch (error) {
@@ -25,7 +26,7 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
       }
     };
     fetchQuickIntel();
-  }, [state.selectedCountry, state.userId]);
+  }, [state.selectedCountry, state.token]);
 
   const handleMapCountryClick = (countryName) => {
     triggerCountryFocus(countryName);

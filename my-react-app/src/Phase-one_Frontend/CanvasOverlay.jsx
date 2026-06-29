@@ -12,12 +12,11 @@ const INDIC_LANGUAGES = [
 const TABS = [
   { id: "briefing", label: "AI Briefing" }, { id: "rules", label: "Rules" },
   { id: "present news", label: "Present News" }, { id: "neighbors", label: "Similar Countries" },
-  { id: "public safty level", label: "public safty level"},
   { id: "culture", label: "Culture & Language" }, { id: "currency", label: "Currency" },
   { id: "places", label: "Popular Places" }, { id: "economy", label: "Economy" },
   { id: "political", label: "Political Status" }, { id: "allies", label: "Friends & Enemies" },
   { id: "history", label: "History" }, { id: "population", label: "Geography & Population" },
-  { id: "transport", label: "Transport" }, { id: "safety", label: "Safety" },
+  { id: "transport", label: "Transport" },{ id: "public safty level", label: "Public safty level"},
   { id: "health", label: "Health" }, { id: "visa", label: "Visa & Entry" }
 ];
 
@@ -53,15 +52,13 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
   const canvasPurposeRef = useRef(null);
   
   const chatEndRef = useRef(null);
-  const audioRef = useRef(null); // --- NEW: Audio Tracker ---
+  const audioRef = useRef(null);
   
-  // --- NEW: Sarvam AI Integration States ---
   const [selectedLang, setSelectedLang] = useState("en-IN");
   const [isTranslating, setIsTranslating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [translatedContent, setTranslatedContent] = useState(null); // Added state to hold the translation
+  const [translatedContent, setTranslatedContent] = useState(null); 
 
-  // Clear translation and STOP AUDIO if the user switches tabs or generates a new briefing
   useEffect(() => {
     setSelectedLang("en-IN");
     setTranslatedContent(null);
@@ -75,23 +72,24 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
     ? state.briefingData 
     : state.tabContent[state.activeTab];
 
-  // Dynamically show the translated content if it exists, otherwise fallback to English
   const displayContent = translatedContent || activeContent;
 
-  // Real function hooked up to FastAPI
   const handleTranslate = async (langCode) => {
     setSelectedLang(langCode);
     if (langCode === "en-IN") {
-      setTranslatedContent(null); // Instantly revert back to English
+      setTranslatedContent(null); 
       return; 
     }
     
     setIsTranslating(true);
     
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
+
       const response = await fetch("http://localhost:8000/api/translate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers,
         body: JSON.stringify({ text: activeContent, target_lang: langCode })
       });
       const result = await response.json();
@@ -104,13 +102,11 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
     }
   };
 
-  // Real function for TTS Audio hooked up to FastAPI with Play/Pause support
   const handleListen = async () => {
-    // --- THE STOP LOGIC ---
     if (isPlaying) {
       if (audioRef.current) {
         audioRef.current.pause();
-        audioRef.current.currentTime = 0; // Reset
+        audioRef.current.currentTime = 0; 
       }
       setIsPlaying(false);
       return; 
@@ -119,15 +115,17 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
     setIsPlaying(true);
     
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
+
       const response = await fetch("http://localhost:8000/api/audio", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers,
         body: JSON.stringify({ text: displayContent, target_lang: selectedLang })
       });
       const result = await response.json();
       
       if (result.audio_base64) {
-        // Track the audio in the ref so we can kill it later
         audioRef.current = new Audio(`data:audio/wav;base64,${result.audio_base64}`);
         audioRef.current.onended = () => setIsPlaying(false);
         audioRef.current.onerror = () => setIsPlaying(false);
@@ -141,14 +139,12 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
     }
   };
 
-  // Smooth scroll for chat
   useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [state.doubtsHistory, displayContent]); 
 
-  // Click outside to close dropdown
   useEffect(() => {
     const handleClick = (e) => {
       if (canvasPurposeRef.current && !canvasPurposeRef.current.contains(e.target)) setShowCanvasDrop(false);
@@ -171,7 +167,6 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
         : "h-0 flex-none opacity-0 translate-y-20 overflow-hidden border-t-0 border-r-transparent"}
     `}>
       
-      {/* Custom Animations & Scrollbar Styles */}
       <style>{`
         @keyframes slideDownFade {
           0% { opacity: 0; transform: translateY(-15px); }
@@ -186,8 +181,18 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
       `}</style>
 
-      {/* Header Bar & Tabs (FLEX-NONE = Static) */}
-      <div className="flex-none flex justify-between bg-slate-800 border-b border-slate-700 py-2">
+      {/* --- FLOATING START JOURNEY BUTTON --- */}
+      <div className="absolute -top-[28px] left-1/2 -translate-x-1/2 z-50">
+        <button 
+          onClick={() => dispatch({ type: "START_JOURNEY" })}
+          className="bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 px-8 py-3 rounded-t-xl font-black tracking-widest uppercase text-sm shadow-[0_-10px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_-10px_30px_rgba(16,185,129,0.5)] hover:-translate-y-1 transition-all flex items-center gap-2 border-t-2 border-emerald-300 cursor-pointer"
+        >
+          Start Journey
+        </button>
+      </div>
+
+      {/* Header Bar & Tabs */}
+      <div className="flex-none flex justify-between bg-slate-800 border-b border-slate-700 py-2 pt-4">
         <div className="flex overflow-x-auto flex-1 px-4 items-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((tab, idx) => (
             <button 
@@ -231,10 +236,9 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
         </div>
       </div>
 
-      {/* Main Body (FLEX-1 MIN-H-0 = Parent boundary lock) */}
+      {/* Main Body */}
       <div className="flex-1 flex flex-col min-h-0 p-6 relative">
         
-        {/* Purpose Row (FLEX-NONE = Static) */}
         <div className="flex-none flex items-center gap-4 mb-6 relative" ref={canvasPurposeRef}>
           <label className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sky-400 font-bold">{state.selectedCountry}</label>
           <div className="flex flex-1 max-w-[350px]">
@@ -263,7 +267,6 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
           )}
         </div>
 
-        {/* Backend Stream Box (FLEX-1 OVERFLOW-Y-AUTO = THIS IS THE ONLY THING THAT SCROLLS) */}
         <div className="flex-1 overflow-y-auto bg-[#090d16] border border-slate-800 rounded-lg p-8 shadow-inner custom-scrollbar relative">
           
           {state.isLoading && !activeContent && !state.doubtsHistory.length ? (
@@ -277,7 +280,6 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
               {activeContent && !state.isLoading && (
                 <div className="flex justify-end items-center gap-4 mb-4 border-b border-slate-800 pb-3">
                   
-                  {/* Translate Dropdown */}
                   <div className="relative">
                     <select 
                       className="appearance-none bg-slate-800 border border-slate-700 text-slate-300 py-1.5 pl-4 pr-8 rounded-lg outline-none focus:border-violet-500 cursor-pointer text-sm font-semibold shadow-sm transition-colors hover:bg-slate-700"
@@ -294,7 +296,6 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
                     </div>
                   </div>
 
-                  {/* Listen Circular Button */}
                   <button 
                     onClick={handleListen}
                     disabled={selectedLang === "en-IN" || !INDIC_LANGUAGES.find(l => l.code === selectedLang)?.hasAudio || (isTranslating && !isPlaying)}
@@ -308,12 +309,10 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
                     title={isPlaying ? "Stop Audio" : "Listen to Briefing"}
                   >
                     {isPlaying ? (
-                      // STOP ICON (Square)
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                         <path fillRule="evenodd" d="M4.5 7.5a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clipRule="evenodd" />
                       </svg>
                     ) : (
-                      // VOLUME ICON
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                         <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 0 0 1.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06ZM18.584 5.106a.75.75 0 0 1 1.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 0 1-1.06-1.06 8.25 8.25 0 0 0 0-11.668.75.75 0 0 1 0-1.06Z" />
                         <path d="M15.932 7.757a.75.75 0 0 1 1.061 0 6 6 0 0 1 0 8.486.75.75 0 0 1-1.06-1.061 4.5 4.5 0 0 0 0-6.364.75.75 0 0 1 0-1.06Z" />
@@ -321,20 +320,17 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
                     )}
                   </button>
 
-                  {/* Loading Indicator for Translation */}
                   {isTranslating && <span className="text-violet-400 text-sm animate-pulse ml-2 font-semibold tracking-wide">Translating Data...</span>}
                   
                 </div>
               )}
 
-              {/* Beautiful Rendered Content - Swapped to displayContent! */}
               {displayContent && (
                 <div className={`mb-10 transition-opacity duration-300 ${isTranslating ? "opacity-30" : "opacity-100"}`}>
                   {renderMarkdownBeautifully(displayContent)}
                 </div>
               )}
               
-              {/* Chat History */}
               {state.doubtsHistory.length > 0 && (
                 <div className="mt-12 pt-8 border-t border-slate-800/80">
                   {state.doubtsHistory.map((msg, idx) => (
@@ -352,7 +348,6 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
                   {state.isLoading && state.doubtsHistory[state.doubtsHistory.length - 1]?.sender === 'user' && (
                     <div className="text-slate-500 text-sm italic mb-6 animate-pulse">Agent is analyzing live data...</div>
                   )}
-                  {/* Invisible element to anchor the auto-scroll */}
                   <div ref={chatEndRef} className="h-4"></div>
                 </div>
               )}
@@ -360,7 +355,6 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
           )}
         </div>
 
-        {/* Doubts Bubble (ABSOLUTE = Floating fixed in place relative to the main body) */}
         <div className="absolute bottom-10 right-10 z-30 flex items-center justify-end h-[50px]">
           <button 
             className={`
