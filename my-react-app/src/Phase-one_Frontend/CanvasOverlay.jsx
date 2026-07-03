@@ -87,7 +87,7 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
       const headers = { "Content-Type": "application/json" };
       if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
 
-      const response = await fetch("http://localhost:8000/api/translate", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/translate` , {
         method: "POST",
         headers: headers,
         body: JSON.stringify({ text: activeContent, target_lang: langCode })
@@ -118,7 +118,7 @@ export default function CanvasOverlay({ state, dispatch, fetchBriefing, fetchTab
       const headers = { "Content-Type": "application/json" };
       if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
 
-      const response = await fetch("http://localhost:8000/api/audio", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/audio`, {
         method: "POST",
         headers: headers,
         body: JSON.stringify({ text: displayContent, target_lang: selectedLang })

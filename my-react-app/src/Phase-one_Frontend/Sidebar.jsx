@@ -16,12 +16,10 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
   const [showCountryDrop, setShowCountryDrop] = useState(false);
   const [showPurposeDrop, setShowPurposeDrop] = useState(false);
   
-  // Archival States (Unified Modal)
   const [historyData, setHistoryData] = useState([]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
 
-  // Profile States
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [profileViewMode, setProfileViewMode] = useState("view");
@@ -36,15 +34,16 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
   const location = useLocation();
 
   // ==========================================
-  // ROUTING: LISTEN TO URL FOR MODALS
+  // FIX 2: ROUTING FOR SIDEBAR NESTED MODALS
   // ==========================================
   useEffect(() => {
     const path = location.pathname;
     
-    if (path === '/global-cache') fetchGlobalArchive(false);
-    else if (path === '/archive') fetchPersonalArchive(false);
-    else if (path === '/history') fetchSearchHistory(false);
-    else if (path === '/profile') handleOpenProfile(false);
+    // URL drives the Modals to open!
+    if (path === '/homepage/global-cache') fetchGlobalArchive(false);
+    else if (path === '/homepage/archive') fetchPersonalArchive(false);
+    else if (path === '/homepage/history') fetchSearchHistory(false);
+    else if (path === '/homepage/profile') handleOpenProfile(false);
     else {
       setShowHistoryModal(false);
       setShowProfileModal(false);
@@ -85,9 +84,10 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
 
   // --- ARCHIVE FETCHERS ---
   const fetchGlobalArchive = async (isClick = true) => {
-    if (isClick) { navigate('/global-cache'); return; } 
+    // Navigate to nested URL
+    if (isClick) { navigate('/homepage/global-cache'); return; } 
     try {
-      const response = await fetch(`http://localhost:8000/api/briefings/global`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/briefings/global`);
       const result = await response.json();
       setHistoryData(result.data || []);
       setModalTitle("🌍 Global Cache (Dev)");
@@ -101,9 +101,10 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
       navigate('/auth'); 
       return;
     }
-    if (isClick) { navigate('/archive'); return; }
+    // Navigate to nested URL
+    if (isClick) { navigate('/homepage/archive'); return; }
     try {
-      const response = await fetch(`http://localhost:8000/api/briefings/archive`, { headers: getAuthHeaders() });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/briefings/archive`, { headers: getAuthHeaders() });
       const result = await response.json();
       setHistoryData(result.data || []);
       setModalTitle("Personal AI Archive");
@@ -117,9 +118,10 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
       navigate('/auth');
       return;
     }
-    if (isClick) { navigate('/history'); return; }
+    // Navigate to nested URL
+    if (isClick) { navigate('/homepage/history'); return; }
     try {
-      const response = await fetch(`http://localhost:8000/api/history`, { headers: getAuthHeaders() });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/history`, { headers: getAuthHeaders() });
       const result = await response.json();
       setHistoryData(result.data || []);
       setModalTitle("Recent Searches");
@@ -129,9 +131,10 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
 
   // --- PROFILE HANDLERS ---
   const handleOpenProfile = async (isClick = true) => {
-    if (isClick) { navigate('/profile'); return; }
+    // Navigate to nested URL
+    if (isClick) { navigate('/homepage/profile'); return; }
     try {
-      const response = await fetch("http://localhost:8000/api/user/profile", { headers: getAuthHeaders() });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, { headers: getAuthHeaders() });
       if (response.ok) {
         const json = await response.json();
         setUserProfile(json.data);
@@ -153,7 +156,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     e.preventDefault();
     setProfileMsg({ type: "", text: "" });
     try {
-      const response = await fetch("http://localhost:8000/api/user/verify-password", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/verify-password` , {
         method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ password: verifyPassword })
       });
       if (response.ok) {
@@ -176,7 +179,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
         passport_blank_pages: editFormData.passport_blank_pages ? parseInt(editFormData.passport_blank_pages) : null
       };
       
-      const response = await fetch("http://localhost:8000/api/user/profile", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile` , {
         method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(payload)
       });
       
@@ -308,10 +311,22 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
             {historyData.length > 0 ? historyData.map((item, i) => (
               <div key={i} onClick={() => { 
+                  // 1. Close the modal immediately
+                  setShowHistoryModal(false);
                   triggerCountryFocus(item.country); 
+                  
+                  // 2. Generate the safe URL slugs
+                  const cSlug = item.country.toLowerCase().replace(/\s+/g, '-');
+                  
+                  // 3. If it's a Briefing, jump straight to the full briefing URL!
                   if (item.purpose && item.purpose !== "Quick Intel Scan") {
+                    const pSlug = item.purpose.toLowerCase().replace(/[\s/]+/g, '-');
                     dispatch({ type: "SET_PURPOSE", payload: item.purpose });
                     fetchBriefing(item.country, item.purpose);
+                    navigate(`/${cSlug}/${pSlug}/briefing`);
+                  } else {
+                    // Otherwise, just jump to the country map view
+                    navigate(`/${cSlug}`);
                   }
                 }} 
                 className="bg-slate-900 p-4 rounded-xl cursor-pointer hover:bg-violet-600/20 transition-all border border-slate-800 hover:border-violet-500 shadow-sm hover:shadow-md"

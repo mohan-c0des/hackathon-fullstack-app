@@ -1,5 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+
+const ROLE_PRESETS = [
+  "Student", "Tourist", "Business Professional", 
+  "Remote Worker / Nomad", "Expat / Relocating"
+];
+
+const HEALTH_PRESETS = [
+  "None (Healthy)", "Asthma", "Diabetes", "Heart Condition", 
+  "Hypertension", "Mobility Impairment", "Severe Allergies", "Other"
+];
 
 export default function AuthOverlay({ dispatch }) {
   const [view, setView] = useState("landing");
@@ -7,8 +17,24 @@ export default function AuthOverlay({ dispatch }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   
+  const [showRoleDrop, setShowRoleDrop] = useState(false);
+  const [showHealthDrop, setShowHealthDrop] = useState(false);
+  
+  const roleRef = useRef(null);
+  const healthRef = useRef(null);
+
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Handle clicking outside custom dropdowns
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (roleRef.current && !roleRef.current.contains(e.target)) setShowRoleDrop(false);
+      if (healthRef.current && !healthRef.current.contains(e.target)) setShowHealthDrop(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   // Listen to URL to change view for Browser Back/Forward buttons
   useEffect(() => {
@@ -17,17 +43,23 @@ export default function AuthOverlay({ dispatch }) {
     else setView("landing");
   }, [location.pathname]);
 
-  // Update URL when clicking buttons
+  const [formData, setFormData] = useState({
+    name: "", email: "", password: "", role: "", age: "", country: "", state: "", city: "", 
+    nationality: "", citizenship: "", health_condition: "", passport_expiry: "", passport_blank_pages: "", bio: ""
+  });
+
+  // Update URL when clicking buttons AND clear form data if registering
   const handleNavigation = (newView, url) => {
+    if (newView === "register") {
+      setFormData({
+        name: "", email: "", password: "", role: "", age: "", country: "", state: "", city: "", 
+        nationality: "", citizenship: "", health_condition: "", passport_expiry: "", passport_blank_pages: "", bio: ""
+      });
+    }
     setView(newView);
     setError("");
     navigate(url);
   };
-
-  const [formData, setFormData] = useState({
-    name: "", email: "", password: "", role: "", age: "", country: "", location: "", 
-    nationality: "", citizenship: "", health_condition: "None", passport_expiry: "", passport_blank_pages: ""
-  });
 
   const completeAuth = (token) => {
     setIsExiting(true);
@@ -46,13 +78,15 @@ export default function AuthOverlay({ dispatch }) {
     e.preventDefault();
     setLoading(true); setError("");
     
-    const url = view === "login" ? "http://localhost:8000/api/auth/login" : "http://localhost:8000/api/auth/register";
+    const url = view === "login" ? `${import.meta.env.VITE_API_URL}/api/auth/login` : `${import.meta.env.VITE_API_URL}/api/auth/register`;
     
     try {
       const response = await fetch(url, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          // Merge City and State so the backend doesn't crash on 'origin_city'
+          origin_city: `${formData.city}, ${formData.state}`, 
           age: formData.age ? parseInt(formData.age) : null,
           passport_blank_pages: formData.passport_blank_pages ? parseInt(formData.passport_blank_pages) : null
         })
@@ -110,7 +144,7 @@ export default function AuthOverlay({ dispatch }) {
             
             <div className="flex-1 flex flex-col group">
               <button onClick={() => handleNavigation("register", "/auth/register")} className="py-5 glass-panel text-white font-bold text-lg rounded-xl hover:bg-sky-600/50 hover:border-sky-400 transition-all shadow-lg hover:shadow-sky-500/20 hover:-translate-y-1 cursor-pointer">
-                Register Passport
+                Register
               </button>
               <p className="text-slate-500 text-xs text-center mt-3 font-medium transition-colors group-hover:text-sky-300">Create a secure travel profile</p>
             </div>
@@ -129,7 +163,7 @@ export default function AuthOverlay({ dispatch }) {
         <div className="relative z-10 glass-panel w-full max-w-3xl h-[75vh] min-h-[500px] rounded-3xl p-8 flex flex-col animate-[slideDownFade_0.3s_ease-out_forwards]">
           
           <div className="flex items-center justify-between mb-8 border-b border-slate-700 pb-4">
-            <button onClick={() => handleNavigation("landing", "/auth")} className="text-slate-400 hover:text-white font-bold flex items-center gap-2 transition-colors cursor-pointer">
+            <button type="button" onClick={() => handleNavigation("landing", "/auth")} className="text-slate-400 hover:text-white font-bold flex items-center gap-2 transition-colors cursor-pointer">
               ← Back
             </button>
             <h2 className="text-2xl font-black text-white tracking-widest uppercase">
@@ -161,55 +195,101 @@ export default function AuthOverlay({ dispatch }) {
               {/* REGISTER FORM */}
               {view === "register" && (
                 <div className="space-y-8">
+                  
+                  {/* Section 1 */}
                   <div>
                     <h3 className="text-violet-400 font-bold mb-4 uppercase tracking-widest text-sm border-b border-slate-700/50 pb-2">1. Credentials</h3>
                     <div className="grid grid-cols-2 gap-4 mb-4">
-                      <input type="text" placeholder="Full Name *" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500 col-span-2" />
+                      <div className="col-span-2">
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Full Name *</label>
+                        <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <input type="email" placeholder="Email Address *" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
-                      <input type="password" placeholder="Secure Password *" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Email Address *</label>
+                        <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Secure Password *</label>
+                        <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
                     </div>
                   </div>
 
+                  {/* Section 2 */}
                   <div>
                     <h3 className="text-violet-400 font-bold mb-4 uppercase tracking-widest text-sm border-b border-slate-700/50 pb-2">2. Your Identity</h3>
+                    
                     <div className="grid grid-cols-2 gap-4 mb-4">
-                      <select required value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500 cursor-pointer">
-                        <option value="" disabled>Who are you? *</option>
-                        <option value="Student">Student</option>
-                        <option value="Tourist">Tourist</option>
-                        <option value="Business Professional">Business Professional</option>
-                        <option value="Remote Worker / Nomad">Remote Worker / Nomad</option>
-                        <option value="Expat / Relocating">Expat / Relocating</option>
-                      </select>
-                      <input type="number" placeholder="Age *" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      <div className="relative" ref={roleRef}>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Who are you? *</label>
+                        <div className="flex w-full">
+                          <input type="text" required value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="bg-slate-900/50 border border-slate-700 border-r-0 p-3 rounded-l-lg text-white outline-none focus:border-sky-500 w-full" placeholder="Type or select..." />
+                          <button type="button" onClick={() => setShowRoleDrop(!showRoleDrop)} className="bg-slate-900/50 border border-slate-700 rounded-r-lg px-3 text-slate-400 hover:text-sky-400 transition-colors cursor-pointer">▾</button>
+                        </div>
+                        {showRoleDrop && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f172a] border border-slate-700 rounded-lg z-50 shadow-xl overflow-hidden">
+                            {ROLE_PRESETS.map(r => <div key={r} onClick={() => { setFormData({...formData, role: r}); setShowRoleDrop(false); }} className="p-3 text-[0.9rem] text-slate-400 cursor-pointer hover:bg-sky-500 hover:text-white transition-colors">{r}</div>)}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Age *</label>
+                        <input type="number" required value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <input type="text" placeholder="Current Country *" required value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
-                      <input type="text" placeholder="Origin City/State *" required value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                    
+                    <div className="mb-4">
+                      <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Bio / Travel Style (Optional)</label>
+                      <textarea rows="2" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} placeholder="Tell us a bit about your travel style..." className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500 resize-none"></textarea>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Current Country *</label>
+                        <input type="text" required value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">State / Province *</label>
+                        <input type="text" required value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">City *</label>
+                        <input type="text" required value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
-                      <input type="text" placeholder="Nationality *" required value={formData.nationality} onChange={e => setFormData({...formData, nationality: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
-                      <input type="text" placeholder="Citizenship *" required value={formData.citizenship} onChange={e => setFormData({...formData, citizenship: e.target.value})} className="bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Nationality *</label>
+                        <input type="text" required value={formData.nationality} onChange={e => setFormData({...formData, nationality: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Citizenship *</label>
+                        <input type="text" required value={formData.citizenship} onChange={e => setFormData({...formData, citizenship: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500" />
+                      </div>
                     </div>
                   </div>
 
+                  {/* Section 3 */}
                   <div>
                     <h3 className="text-violet-400 font-bold mb-4 uppercase tracking-widest text-sm border-b border-slate-700/50 pb-2">3. Health Profile</h3>
-                    <select value={formData.health_condition} onChange={e => setFormData({...formData, health_condition: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-slate-300 outline-none focus:border-sky-500 cursor-pointer">
-                      <option value="None">None (Healthy)</option>
-                      <option value="Asthma">Asthma</option>
-                      <option value="Diabetes">Diabetes</option>
-                      <option value="Heart Condition">Heart Condition</option>
-                      <option value="Hypertension">Hypertension</option>
-                      <option value="Mobility Impairment">Mobility Impairment</option>
-                      <option value="Severe Allergies">Severe Allergies</option>
-                      <option value="Recent Surgery">Recent Surgery</option>
-                      <option value="Other">Other Documented Disorder</option>
-                    </select>
+                    <div className="relative" ref={healthRef}>
+                      <div className="flex w-full">
+                        <input type="text" value={formData.health_condition} onChange={e => setFormData({...formData, health_condition: e.target.value})} className="bg-slate-900/50 border border-slate-700 border-r-0 p-3 rounded-l-lg text-white outline-none focus:border-sky-500 w-full" placeholder="Any health conditions?" />
+                        <button type="button" onClick={() => setShowHealthDrop(!showHealthDrop)} className="bg-slate-900/50 border border-slate-700 rounded-r-lg px-3 text-slate-400 hover:text-sky-400 transition-colors cursor-pointer">▾</button>
+                      </div>
+                      {showHealthDrop && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f172a] border border-slate-700 rounded-lg z-50 shadow-xl overflow-hidden">
+                          {HEALTH_PRESETS.map(h => <div key={h} onClick={() => { setFormData({...formData, health_condition: h}); setShowHealthDrop(false); }} className="p-3 text-[0.9rem] text-slate-400 cursor-pointer hover:bg-sky-500 hover:text-white transition-colors">{h}</div>)}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
+                  {/* Section 4 */}
                   <div>
                     <h3 className="text-violet-400 font-bold mb-4 uppercase tracking-widest text-sm border-b border-slate-700/50 pb-2">4. Passport Specs (Optional)</h3>
                     <div className="grid grid-cols-2 gap-4 pb-6">

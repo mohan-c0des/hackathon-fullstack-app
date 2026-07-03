@@ -2,15 +2,21 @@ import os
 import datetime
 from typing import List, Dict, Any, cast, LiteralString, Optional
 from neo4j import AsyncGraphDatabase
+from dotenv import load_dotenv, find_dotenv
+
+# 1. Force the database file to load the .env itself before doing anything!
+load_dotenv(find_dotenv(), override=True)
 
 class Neo4jGraphService:
     def __init__(self):
         uri = os.getenv("NEO4J_URI")
-        username = os.getenv("NEO4J_USERNAME")
+        
+        # 2. Check for BOTH "NEO4J_USERNAME" and "NEO4J_USER" just in case!
+        username = os.getenv("NEO4J_USERNAME") or os.getenv("NEO4J_USER")
         password = os.getenv("NEO4J_PASSWORD")
 
         if not uri or not username or not password:
-            raise RuntimeError("Missing Neo4j connection environment variables.")
+            raise RuntimeError(f"Missing Neo4j connection environment variables. URI: {bool(uri)}, USER: {bool(username)}, PASS: {bool(password)}")
             
         self.driver = AsyncGraphDatabase.driver(
             str(uri), 
@@ -161,7 +167,7 @@ class Neo4jGraphService:
         query = """
         MERGE (u:User {id: $user_id})
         ON CREATE SET u.created_at = timestamp()
-        MATCH (c:Country {name: $country_name})
+        MERGE (c:Country {name: $country_name}) // <--- THE FIX: Changed MATCH to MERGE
         CREATE (u)-[:SEARCHED {purpose: $purpose, timestamp: $timestamp}]->(c)
         """
         async with self.driver.session() as session:

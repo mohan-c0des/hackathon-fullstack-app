@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+neo4j
+python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+langchain
+langchain-google-genai
+langchain-anthropic
+langgraph
+httpx

@@ -15,18 +15,35 @@ class TranslatePayload(BaseModel):
     text: str
     target_lang: str
 
-class JourneyInteractPayload(BaseModel):
-    user_id: str
-    target_country: str
-    action: str  # Options: "START", "CHAT", "NEXT_PHASE", "AIRPORT_ARRIVED", "DESTINATION_ARRIVED"
-    message: Optional[str] = None
-    
-    # Profile Data (Only required when action == "START")
-    origin_city: Optional[str] = None
-    destination_city: Optional[str] = None
-    citizenship: Optional[str] = None
-    age: Optional[int] = None
+class JourneyData(BaseModel):
+    #identity(fetched from DB)
+    name: str 
+    role: str
+    age: int
+    country: str
+    origin_city: str
+    nationality: str
+    citizenship: str
+    bio: Optional[str] = ""
+
+    # Health & Documents(fetched from DB)
+    health_condition: Optional[str] = ""
+    passport_expiry: Optional[str] = ""
+    passport_blank_pages: Optional[int] = None
+
+    # Travel Details(fetched from frontend)
     purpose: Optional[str] = None
+    target_country: str
+
+    #these are the only details that user will provide extra.
+    exact_destination: str #->this is the exact state and city or place user wants to visit in the target country
+    travel_duration: str
+    add_ons: str #->this tells if user is travelling alone, one-way-trip, etc
+    extra_info: Optional[str] = None
+
+class JourneyQuestion(BaseModel):
+    question: str
+
 
 class UserRegister(BaseModel):
     name: str
@@ -40,6 +57,7 @@ class UserRegister(BaseModel):
     origin_city: str
     nationality: str
     citizenship: str
+    bio: Optional[str] = ""
     
     # Health & Documents
     health_condition: Optional[str] = ""

@@ -5,6 +5,22 @@ import { geoCentroid, geoArea } from "d3-geo";
 
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
 
+// Clean the official TopoJSON names into standard API names
+const COUNTRY_NAME_MAP = {
+  "United States of America": "United States",
+  "Russian Federation": "Russia",
+  "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+  "Republic of Korea": "South Korea",
+  "Democratic People's Republic of Korea": "North Korea",
+  "Syrian Arab Republic": "Syria",
+  "Islamic Republic of Iran": "Iran",
+  "United Republic of Tanzania": "Tanzania",
+  "Democratic Republic of the Congo": "DR Congo",
+  "Central African Republic": "CAR",
+  "Venezuela (Bolivarian Republic of)": "Venezuela",
+  "Bolivia (Plurinational State of)": "Bolivia"
+};
+
 export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeatures, triggerCountryFocus, fetchBriefing }) {
   
   const [hudIntel, setHudIntel] = useState(null);
@@ -16,9 +32,8 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
         return;
       }
       try {
-        // Send the secure JWT token if logged in!
         const headers = state.token ? { "Authorization": `Bearer ${state.token}` } : {};
-        const response = await fetch(`http://localhost:8000/api/quick-intel?country=${state.selectedCountry}`, { headers });
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/quick-intel?country=${state.selectedCountry}`, { headers });
         const result = await response.json();
         setHudIntel(result.data);
       } catch (error) {
@@ -50,7 +65,6 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
 
   const safeArray = (arr) => Array.isArray(arr) ? arr : [];
 
-  // Theme styling logic integrated perfectly
   const theme = state.theme || "treasure";
   let mapStyles = {};
   
@@ -69,7 +83,6 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
       selected: { fill: "#3b82f6", stroke: "#2563eb", strokeWidth: 1 }
     };
   } else {
-    // Treasure (Original)
     mapStyles = {
       default: { fill: "#dbb086a9", stroke: "#0a0909", strokeWidth: 1 },
       hover: { fill: "#895a2aa9", stroke: "#062e21", strokeWidth: 2, cursor: "pointer" },
@@ -78,7 +91,6 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
     };
   }
 
-  // Adjusted offsets to accommodate the new compact layout
   const leftStats = [
     { label: "POPULATION", value: hudIntel?.population, yOffset: -22, color: "#38bdf8" },
     { label: "AREA", value: hudIntel?.area, yOffset: -7, color: "#38bdf8" },
@@ -100,7 +112,6 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
       ${state.isAutoZooming ? "[&_g]:transition-transform [&_g]:duration-1500 [&_g]:ease-[cubic-bezier(0.34,1.56,0.64,1)]" : ""}
     `}>
       
-      {/* THE 4 CORNER NEO4J RECOMMENDATION BOXES */}
       {hudIntel && state.selectedCountry && (
         <>
           <div className="absolute top-4 left-[380px] z-10 bg-slate-900/90 backdrop-blur-md border border-amber-500/50 rounded-lg p-3 w-48 shadow-[0_0_15px_rgba(245,158,11,0.3)] pointer-events-auto">
@@ -143,7 +154,6 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
 
       <ComposableMap projection="geoMercator" viewBox="0 0 800 450" className="w-full h-full outline-none pointer-events-auto">
         
-        {/* IRON MAN GLOW FILTERS */}
         <defs>
           <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="1.5" result="blur" />
@@ -161,8 +171,23 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
         >
           <Geographies geography={geoUrl}>
             {({ geographies }) => {
-              if (geoFeatures.length === 0 && geographies.length > 0) setGeoFeatures(geographies);
-              return geographies.map((geo) => {
+              
+              // CRITICAL FIX: Translate the names BEFORE saving to App State!
+              const cleanGeographies = geographies.map(geo => ({
+                ...geo,
+                properties: {
+                  ...geo.properties,
+                  name: COUNTRY_NAME_MAP[geo.properties.name] || geo.properties.name
+                }
+              }));
+
+              if (geoFeatures.length === 0 && cleanGeographies.length > 0) {
+                setTimeout(() => setGeoFeatures(cleanGeographies), 0);
+              }
+
+              const displayGeos = geoFeatures.length > 0 ? geoFeatures : cleanGeographies;
+
+              return displayGeos.map((geo) => {
                 const countryName = geo.properties.name || "";
                 const isSelected = state.selectedCountry === countryName;
                 
@@ -203,14 +228,12 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
             }}
           </Geographies>
 
-          {/* INNER HUD: RADIANT, COMPACT & CONNECTED */}
           {state.selectedCountry && hudIntel && isValidCentroid && (
             <Marker coordinates={selectedCentroid} className="transition-opacity duration-700 pointer-events-none">
               
               <circle r={2 * dotScale} fill="#38bdf8" className="animate-pulse"/>
               <circle r={0.8 * dotScale} fill="#fff" />
 
-              {/* LEFT SIDE RADIANT STATS */}
               {leftStats.map((stat, idx) => {
                 const endX = -18 * hudScale;
                 const lineY = stat.yOffset * hudScale;
@@ -221,18 +244,14 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
 
                 return (
                   <g key={`left-${idx}`}>
-                    {/* Mechanical Polyline Connector */}
                     <polyline points={`0,0 -8,${lineY} ${endX},${lineY}`} fill="none" stroke={stat.color} strokeWidth={0.5 * hudScale} opacity="0.8" filter="url(#neonGlow)"/>
-                    {/* Compact Glowing Box */}
                     <rect x={rectX} y={rectY} width={boxWidth} height={boxHeight} fill="#020617" fillOpacity="0.75" stroke={stat.color} strokeWidth={0.4 * hudScale} rx={1 * hudScale} filter="url(#neonGlow)"/>
-                    {/* Stacked Text */}
                     <text x={rectX + boxWidth - (2*hudScale)} y={rectY + 4*hudScale} textAnchor="end" fill={stat.color} fontSize={2.2 * hudScale} className="font-black tracking-widest">{stat.label}</text>
                     <text x={rectX + boxWidth - (2*hudScale)} y={rectY + 9.5*hudScale} textAnchor="end" fill="#f8fafc" fontSize={3.2 * hudScale} className="font-bold">{safeText(stat.value)}</text>
                   </g>
                 );
               })}
 
-              {/* RIGHT SIDE RADIANT STATS */}
               {rightStats.map((stat, idx) => {
                 const endX = 18 * hudScale;
                 const lineY = stat.yOffset * hudScale;
@@ -243,11 +262,8 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
 
                 return (
                   <g key={`right-${idx}`}>
-                    {/* Mechanical Polyline Connector */}
                     <polyline points={`0,0 8,${lineY} ${endX},${lineY}`} fill="none" stroke={stat.color} strokeWidth={0.5 * hudScale} opacity="0.8" filter="url(#neonGlow)"/>
-                    {/* Compact Glowing Box */}
                     <rect x={rectX} y={rectY} width={boxWidth} height={boxHeight} fill="#020617" fillOpacity="0.75" stroke={stat.color} strokeWidth={0.4 * hudScale} rx={1 * hudScale} filter="url(#neonGlow)"/>
-                    {/* Stacked Text */}
                     <text x={rectX + 2*hudScale} y={rectY + 4*hudScale} textAnchor="start" fill={stat.color} fontSize={2.2 * hudScale} className="font-black tracking-widest">{stat.label}</text>
                     <text x={rectX + 2*hudScale} y={rectY + 9.5*hudScale} textAnchor="start" fill="#f8fafc" fontSize={3.2 * hudScale} className="font-bold">{safeText(stat.value)}</text>
                   </g>

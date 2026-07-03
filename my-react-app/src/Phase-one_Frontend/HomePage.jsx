@@ -100,45 +100,44 @@ export default function BriefingDashboard() {
   const [geoFeatures, setGeoFeatures] = useState([]);
   
   const activeRequestRef = useRef(null);
+  const isInitialMount = useRef(true);
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ==========================================
-  // ROUTING ENGINE 1: AUTHENTICATION LOCK
-  // ==========================================
   useEffect(() => {
     const path = location.pathname;
+    
     if (state.authView === "visible") {
-      // If logged out, force URL to /auth gateway
       if (!path.startsWith("/auth")) navigate("/auth", { replace: true });
     } else {
-      // If logged in but on auth URLs, push them securely inside
-      if (path.startsWith("/auth") || path === "/") navigate("/homepage", { replace: true });
+      if (path.startsWith("/auth") || path === "/") {
+        navigate("/homepage", { replace: true });
+      } 
+      else if (isInitialMount.current && path !== "/homepage") {
+        navigate("/homepage", { replace: true });
+      }
     }
+    
+    isInitialMount.current = false;
   }, [state.authView, location.pathname, navigate]);
 
-  // ==========================================
-  // ROUTING ENGINE 2: URL -> STATE (DEEP LINKING)
-  // ==========================================
   useEffect(() => {
     if (state.authView === "visible") return;
 
     const path = decodeURIComponent(location.pathname).replace(/^\/|\/$/g, '');
     const parts = path.split('/');
     
-    const specialPaths = ['homepage', 'profile', 'global-cache', 'archive', 'history', 'auth'];
+    const isModalUrl = parts[0] === 'homepage' && ['profile', 'global-cache', 'archive', 'history'].includes(parts[1]);
     
-    if (!path || specialPaths.includes(parts[0])) {
+    if (!path || path === 'homepage' || isModalUrl || parts[0] === 'auth') {
       if (state.isBriefingActive) dispatch({ type: "CLOSE_CANVAS" });
       if (state.isJourneyActive) dispatch({ type: "CLOSE_JOURNEY" });
       return;
     }
 
-    // Dynamic Deep Link Parser: /country/purpose/view
     const [cSlug, pSlug, vSlug] = parts;
 
-    // 1. Zoom to Country
     if (cSlug) {
       const countryName = cSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       if (state.selectedCountry.toLowerCase() !== countryName.toLowerCase()) {
@@ -150,12 +149,11 @@ export default function BriefingDashboard() {
              dispatch({ type: "SET_SEARCH", payload: countryName });
            }
          } else {
-           dispatch({ type: "SET_SEARCH", payload: countryName }); // Triggers when geoFeatures finally load
+           dispatch({ type: "SET_SEARCH", payload: countryName }); 
          }
       }
     }
 
-    // 2. Set Purpose
     if (pSlug && pSlug !== 'general') {
       const purposeName = pSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       if (state.purposeInput.toLowerCase() !== purposeName.toLowerCase()) {
@@ -163,25 +161,22 @@ export default function BriefingDashboard() {
       }
     }
 
-    // 3. Open UI Windows
     if (vSlug === 'briefing' && !state.isBriefingActive) dispatch({ type: "START_BRIEFING" });
     else if (vSlug === 'journey' && !state.isJourneyActive) dispatch({ type: "START_JOURNEY" });
     else if (!vSlug) {
       if (state.isBriefingActive) dispatch({ type: "CLOSE_CANVAS" });
       if (state.isJourneyActive) dispatch({ type: "CLOSE_JOURNEY" });
     }
-  }, [location.pathname, geoFeatures]); // Reruns when geoFeatures load so the map correctly zooms!
+  }, [location.pathname, geoFeatures]); 
 
-  // ==========================================
-  // ROUTING ENGINE 3: STATE -> URL (Pushing changes)
-  // ==========================================
   useEffect(() => {
     if (state.authView === "visible") return;
 
     const currentPath = decodeURIComponent(location.pathname).replace(/^\/|\/$/g, '');
-    const isSpecialPath = ['profile', 'global-cache', 'archive', 'history', 'auth'].includes(currentPath.split('/')[0]);
+    const parts = currentPath.split('/');
+    const isModalUrl = parts[0] === 'homepage' && ['profile', 'global-cache', 'archive', 'history'].includes(parts[1]);
     
-    if (isSpecialPath) return; // Sidebar Modal URLs are managed independently
+    if (isModalUrl || parts[0] === 'auth') return;
 
     const cSlug = state.selectedCountry ? state.selectedCountry.toLowerCase().replace(/\s+/g, '-') : '';
     const pSlug = state.purposeInput ? state.purposeInput.toLowerCase().replace(/[\s/]+/g, '-') : 'general';
@@ -191,8 +186,6 @@ export default function BriefingDashboard() {
     else if (state.isBriefingActive && cSlug) newUrl = `/${cSlug}/${pSlug}/briefing`;
     else if (cSlug) newUrl = `/${cSlug}`;
 
-    // FIX: Only push to the URL if the state actually HAS a country loaded.
-    // This stops the initial empty state from wiping out your manually typed /india URL!
     if (currentPath !== newUrl.replace(/^\/|\/$/g, '') && state.selectedCountry !== "") {
       navigate(newUrl); 
     }
@@ -229,7 +222,7 @@ export default function BriefingDashboard() {
     dispatch({ type: "API_START" });
     
     try {
-      const response = await fetch("http://localhost:8000/api/briefing", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/briefing` , {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ country, purpose: finalPurpose }),
@@ -255,7 +248,7 @@ export default function BriefingDashboard() {
 
     dispatch({ type: "API_START" });
     try {
-      const response = await fetch("http://localhost:8000/api/tab", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tab` , {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ country: state.selectedCountry, purpose: state.purposeInput || "General Knowledge", tabName }),
@@ -277,7 +270,7 @@ export default function BriefingDashboard() {
     dispatch({ type: "ADD_DOUBT_MESSAGE", payload: { sender: 'user', text: doubtText } });
     
     try {
-      const response = await fetch("http://localhost:8000/api/doubt", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doubt` , {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -300,14 +293,23 @@ export default function BriefingDashboard() {
 
   const triggerCountryFocus = (countryName, geographiesArray = geoFeatures) => {
     if (!countryName) return;
+    
+    // Locates the country safely because MapDisplay already forced all names to match!
     const targetGeo = geographiesArray.find(geo => geo.properties.name?.toLowerCase() === countryName.toLowerCase());
+
     if (targetGeo) {
-      const centroid = geoCentroid(targetGeo);
+      const rawCentroid = geoCentroid(targetGeo);
+      
+      // X-AXIS OFFSET: Adjust rawCentroid[0] (+ shifts camera right so country appears LEFT on screen)
+      // Y-AXIS OFFSET: Adjust rawCentroid[1] (- shifts camera down so country appears HIGHER on screen)
+      const adjustedCentroid = [rawCentroid[0] + 8, rawCentroid[1] - 4]; 
+
       let dynamicZoom = 3.5;
       const area = targetGeo.properties.AREA || 100000;
       if (area < 5000) dynamicZoom = 6;
       if (area > 500000) dynamicZoom = 2.2;
-      dispatch({ type: "FOCUS_COUNTRY", payload: { name: countryName, center: centroid, zoom: dynamicZoom } });
+      
+      dispatch({ type: "FOCUS_COUNTRY", payload: { name: countryName, center: adjustedCentroid, zoom: dynamicZoom } });
       setTimeout(() => dispatch({ type: "END_ZOOM" }), 1500);
     }
   };
