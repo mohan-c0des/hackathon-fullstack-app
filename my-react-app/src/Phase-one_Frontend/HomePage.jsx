@@ -222,7 +222,8 @@ export default function BriefingDashboard() {
     dispatch({ type: "API_START" });
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/briefing` , {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/briefing`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ country, purpose: finalPurpose }),
@@ -248,7 +249,8 @@ export default function BriefingDashboard() {
 
     dispatch({ type: "API_START" });
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tab` , {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/tab`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ country: state.selectedCountry, purpose: state.purposeInput || "General Knowledge", tabName }),
@@ -270,7 +272,8 @@ export default function BriefingDashboard() {
     dispatch({ type: "ADD_DOUBT_MESSAGE", payload: { sender: 'user', text: doubtText } });
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doubt` , {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/doubt`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({

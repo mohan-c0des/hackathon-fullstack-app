@@ -78,7 +78,8 @@ export default function AuthOverlay({ dispatch }) {
     e.preventDefault();
     setLoading(true); setError("");
     
-    const url = view === "login" ? `${import.meta.env.VITE_API_URL}/api/auth/login` : `${import.meta.env.VITE_API_URL}/api/auth/register`;
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    const url = view === "login" ? `${API_URL}/api/auth/login` : `${API_URL}/api/auth/register`;
     
     try {
       const response = await fetch(url, {

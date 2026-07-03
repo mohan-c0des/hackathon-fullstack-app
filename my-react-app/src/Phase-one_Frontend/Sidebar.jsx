@@ -87,7 +87,8 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     // Navigate to nested URL
     if (isClick) { navigate('/homepage/global-cache'); return; } 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/briefings/global`);
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/briefings/global`);
       const result = await response.json();
       setHistoryData(result.data || []);
       setModalTitle("🌍 Global Cache (Dev)");
@@ -104,7 +105,8 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     // Navigate to nested URL
     if (isClick) { navigate('/homepage/archive'); return; }
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/briefings/archive`, { headers: getAuthHeaders() });
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/briefings/archive`, { headers: getAuthHeaders() });
       const result = await response.json();
       setHistoryData(result.data || []);
       setModalTitle("Personal AI Archive");
@@ -121,7 +123,8 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     // Navigate to nested URL
     if (isClick) { navigate('/homepage/history'); return; }
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/history`, { headers: getAuthHeaders() });
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/history`, { headers: getAuthHeaders() });
       const result = await response.json();
       setHistoryData(result.data || []);
       setModalTitle("Recent Searches");
@@ -134,7 +137,8 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     // Navigate to nested URL
     if (isClick) { navigate('/homepage/profile'); return; }
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, { headers: getAuthHeaders() });
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/user/profile`, { headers: getAuthHeaders() });
       if (response.ok) {
         const json = await response.json();
         setUserProfile(json.data);
@@ -156,7 +160,8 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     e.preventDefault();
     setProfileMsg({ type: "", text: "" });
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/verify-password` , {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/user/verify-password`, {
         method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ password: verifyPassword })
       });
       if (response.ok) {
@@ -173,13 +178,14 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     e.preventDefault();
     setProfileMsg({ type: "", text: "" });
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const payload = { 
         ...editFormData, 
         age: editFormData.age ? parseInt(editFormData.age) : null,
         passport_blank_pages: editFormData.passport_blank_pages ? parseInt(editFormData.passport_blank_pages) : null
       };
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile` , {
+      const response = await fetch(`${API_URL}/api/user/profile` , {
         method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(payload)
       });
       

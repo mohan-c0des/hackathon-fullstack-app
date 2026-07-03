@@ -33,7 +33,8 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
       }
       try {
         const headers = state.token ? { "Authorization": `Bearer ${state.token}` } : {};
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/quick-intel?country=${state.selectedCountry}`, { headers });
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+        const response = await fetch(`${API_URL}/api/quick-intel?country=${state.selectedCountry}`, { headers });
         const result = await response.json();
         setHudIntel(result.data);
       } catch (error) {
