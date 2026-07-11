@@ -148,6 +148,39 @@ async def gather_full_intelligence(country: str, news_query: str) -> str:
     # We dump it to a string because LangGraph tools must return strings
     return json.dumps(intelligence_package, indent=2)
 
+import asyncio
+
+# Note: Replace `fetch_live_country_data` with whatever the actual name 
+# of your existing API-fetching function is in your codebase!
+
+# ==========================================
+# 4. SIMULTANEOUS COMPARISON GATHERER
+# ==========================================
+async def gather_comparison_intelligence(countryA: str, countryB: str, purpose: str) -> dict:
+    """
+    Fires the unified intelligence gatherer for BOTH countries simultaneously.
+    This effectively runs 6 API calls (3 per country) in parallel, cutting loading time in half.
+    """
+    # Create targeted news queries combining the country and the user's purpose
+    queryA = f"{countryA} {purpose}"
+    queryB = f"{countryB} {purpose}"
+    
+    print(f"\n[COMPARE MODE] Launching parallel intelligence gathering for {countryA} and {countryB}...")
+    
+    # Run both massive data gathering tasks at the exact same time
+    taskA = gather_full_intelligence(country=countryA, news_query=queryA)
+    taskB = gather_full_intelligence(country=countryB, news_query=queryB)
+    
+    # Wait for all 6 API calls to finish
+    dataA, dataB = await asyncio.gather(taskA, taskB)
+    
+    print(f"[COMPARE MODE] Parallel gathering complete.")
+    
+    return {
+        "countryA_raw_data": dataA,
+        "countryB_raw_data": dataB
+    }
+
 # ==========================================
 # 4. EXPLICIT LANGGRAPH TOOLS
 # ==========================================
@@ -163,6 +196,44 @@ async def generate_country_briefing_tool(country: str, purpose: str) -> str:
     """
     news_query = f"{country} travel {purpose}"
     return await gather_full_intelligence(country, news_query)
+
+@tool
+async def compare_countries_tool(countryA: str, countryB: str, purpose: str, basis: str) -> str:
+    """
+    Tool: Comparative Country Intelligence Gatherer
+    Executes a hyper-targeted simultaneous data gather for BOTH countries to establish a deep,
+    baseline comparative analysis based on the user's purpose and specific comparison basis.
+    """
+    try:
+        print(f"\n[TOOL FIRED] compare_countries_tool for {countryA} vs {countryB}")
+        
+        # Fire the parallel intelligence gatherer we built earlier
+        raw_intel = await gather_comparison_intelligence(countryA, countryB, purpose)
+        
+        # Package it beautifully with strict structural prompting for the LLM
+        combined_package = {
+            "status": "Comparative baseline compilation successful.",
+            "basis_of_comparison": basis,
+            "countryA_raw_data": raw_intel["countryA_raw_data"],
+            "countryB_raw_data": raw_intel["countryB_raw_data"],
+            "LLM_INSTRUCTION": (
+                f"Analyze this massive dual-country data payload through the lens of '{purpose}' "
+                f"and strictly on the comparison basis of '{basis}'.\n"
+                "CRITICAL RULES:\n"
+                "1. Extract and formulate a deep, point-by-point comparative analysis.\n"
+                "2. Do NOT output tables or markdown tables. Use robust, highly detailed paragraphs.\n"
+                "3. Ensure the comparison is balanced and highlights pros and cons for both sides.\n"
+                "4. If specific data points are missing from the APIs, utilize your supreme internal knowledge to fill the gaps seamlessly without apologizing."
+            )
+        }
+        
+        import json
+        return json.dumps(combined_package, indent=2)
+        
+    except Exception as e:
+        # THIS fallback return is what fixes the "None is not assignable to str" error!
+        return f"Error gathering comparison data: {str(e)}"
+
 
 @tool
 async def explore_tab_information_tool(country: str, purpose: str, tabName: str) -> str:
@@ -189,14 +260,46 @@ async def resolve_user_doubt_tool(country: str, purpose: str, tabName: str, doub
     news_query = f"{country} {tabName} {doubt}"
     return await gather_full_intelligence(country, news_query)
 
+@tool
+async def resolve_compare_doubt_tool(countryA: str, countryB: str, purpose: str, basis: str, doubt: str) -> str:
+    """
+    Tool: Comparative Doubt Resolver
+    Fetches simultaneous live data for both countries to resolve a specific user doubt regarding their comparison.
+    """
+    try:
+        print(f"\n[TOOL FIRED] resolve_compare_doubt_tool for {countryA} vs {countryB} | Doubt: {doubt}")
+        
+        # Reusing the parallel intelligence gatherer, but injecting the 'doubt' into the news search query!
+        raw_intel = await gather_comparison_intelligence(countryA, countryB, f"{purpose} {doubt}")
+        
+        package = {
+            "status": "Comparative doubt data gathered successfully.",
+            "user_doubt": doubt,
+            "basis_of_comparison": basis,
+            "countryA_raw_data": raw_intel["countryA_raw_data"],
+            "countryB_raw_data": raw_intel["countryB_raw_data"],
+            "LLM_INSTRUCTION": (
+                f"Read this massive dual-country data and answer the user's specific doubt: '{doubt}'. "
+                f"Compare both countries directly based on the data. If the APIs lack the exact answer, "
+                f"use your supreme internal knowledge to fill the gaps seamlessly."
+            )
+        }
+        
+        import json
+        return json.dumps(package, indent=2)
+    
+    except Exception as e:
+        # THIS fallback return ensures a string is ALWAYS returned!
+        return f"Error gathering comparative doubt data: {str(e)}"
+
 # ==========================================
 # 5. AGENT ORCHESTRATION & SYSTEM PROMPT
 # ==========================================
-tools = [generate_country_briefing_tool, explore_tab_information_tool, resolve_user_doubt_tool]
+tools = [generate_country_briefing_tool, compare_countries_tool, explore_tab_information_tool, resolve_user_doubt_tool, resolve_compare_doubt_tool]
 tool_node = ToolNode(tools=tools)
 
 # Using 2.5-flash for blazing fast, high-IQ reasoning
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3).bind_tools(tools)
+llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.3).bind_tools(tools)
 
 SYSTEM_PROMPT = """You are 'Atlas', an elite, omniscient Travel Intelligence AI. 
 You are equipped with tools that feed you massive amounts of raw JSON data from multiple global databases (Altoal, RestCountries, NewsAPI).
@@ -210,6 +313,26 @@ YOUR DIRECTIVES:
 4. FORMATTING: Output must be stunningly formatted in Markdown. Use bold headers, bulleted lists for readability, and always include a "Pro-Tips / Suggestions" section at the bottom tailored to the user's exact purpose.
 5. \nCRITICAL OUTPUT RULE: Use the tool data for understading the specific topics and use your own knowledge base to construct a comprehensive, highly detailed, and academically rigorous report.
                 Your reports must be beautifully formatted with highly detailed headings, itemized specifications, and zero placeholders
+
+SINGLE-COUNTRY INTELLIGENCE DIRECTIVES:
+
+For Initial Briefings: When generating the first comprehensive overview of a single country, you MUST use the generate_country_briefing_tool. 
+Gather the live data and synthesize it into beautifully structured Markdown, tailored strictly to the user's travel purpose.
+
+For Tab Deep Dives: When asked for a deep dive into a specific category (e.g., Economy, Health, Transport), use the explore_tab_information_tool. 
+Filter the massive data payload to extract ONLY what is highly relevant to that specific tab and purpose. Format the output with deep, organized Markdown headers and bullets.
+
+For Specific Doubts: When the user asks a specific follow-up question via the single-country doubt UI, use the resolve_user_doubt tool. 
+Cross-reference the live data with the current tab context, and answer the doubt directly, intelligently, and concisely.
+
+COMPARATIVE INTELLIGENCE DIRECTIVES:
+
+For Initial Comparisons: When tasked to compare two countries side-by-side, you MUST use the execute_comparative_analysis tool.
+Your final output must strictly follow the Pydantic schema (two corresponding list[str] arrays). 
+Never output tables, markdown headers, or single blocks of text for this task. Write robust, point-by-point comparative paragraphs.
+
+For Comparative Doubts: When the user asks a specific follow-up question comparing the two countries, use the resolve_comparative_doubt tool. 
+Synthesize the live data into a direct, conversational, and highly accurate answer.
 """
 
 async def call_model(state: AgentState):

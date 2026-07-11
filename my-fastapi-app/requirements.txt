@@ -9,3 +9,4 @@ langchain-google-genai
 langchain-anthropic
 langgraph
 httpx
+pycountry

@@ -244,7 +244,7 @@ export default function AuthOverlay({ dispatch }) {
                     
                     <div className="mb-4">
                       <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Bio / Travel Style (Optional)</label>
-                      <textarea rows="2" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} placeholder="Tell us a bit about your travel style..." className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500 resize-none"></textarea>
+                      <textarea rows="2" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} placeholder="Anything You Wanna Share.." className="w-full bg-slate-900/50 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-sky-500 resize-none"></textarea>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

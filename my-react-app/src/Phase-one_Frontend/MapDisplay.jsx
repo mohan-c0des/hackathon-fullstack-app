@@ -76,13 +76,14 @@ export default function MapDisplay({ state, dispatch, geoFeatures, setGeoFeature
       pressed: { fill: "#0f172a", outline: "none" },
       selected: { fill: "#3b82f6", stroke: "#60a5fa", strokeWidth: 1 }
     };
-  } else if (theme === "light") {
-    mapStyles = {
-      default: { fill: "#e2e8f0", stroke: "#cbd5e1", strokeWidth: 0.5 },
-      hover: { fill: "#cbd5e1", stroke: "#3b82f6", strokeWidth: 1, cursor: "pointer" },
-      pressed: { fill: "#94a3b8", outline: "none" },
-      selected: { fill: "#3b82f6", stroke: "#2563eb", strokeWidth: 1 }
-    };
+  } else if (theme === "normal") {
+      // Realistic "True Earth" Atlas Theme
+      mapStyles = {
+        default: { fill: "#cce0b4", stroke: "#9db482", strokeWidth: 0.5 }, // Natural terrain green
+        hover: { fill: "#fbeea5", stroke: "#d9b041", strokeWidth: 1, cursor: "pointer" }, // Sandy highnormal
+        pressed: { fill: "#e0b85c", outline: "none" },
+        selected: { fill: "#e76f51", stroke: "#c44536", strokeWidth: 1 } // Earthy terra-cotta red
+      };
   } else {
     mapStyles = {
       default: { fill: "#dbb086a9", stroke: "#0a0909", strokeWidth: 1 },

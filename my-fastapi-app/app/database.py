@@ -152,6 +152,406 @@ class Neo4jGraphService:
         MERGE (sau)-[:DEEP_RELATION {type: 'Regional Alliance'}]-(egy)
         MERGE (ind)-[:DEEP_RELATION {type: 'Economic tech corridor'}]-(usa)
         MERGE (ind)-[:DEEP_RELATION {type: 'Infrastructure pact'}]-(jpn)
+
+        // 7. Add More Major Countries (Europe, Asia, Americas, Africa, Middle East, Oceania)
+        MERGE (ita:Country {name: 'Italy'})
+        MERGE (esp:Country {name: 'Spain'})
+        MERGE (nld:Country {name: 'Netherlands'})
+        MERGE (che:Country {name: 'Switzerland'})
+        MERGE (swe:Country {name: 'Sweden'})
+        MERGE (nor:Country {name: 'Norway'})
+        MERGE (pol:Country {name: 'Poland'})
+        MERGE (grc:Country {name: 'Greece'})
+        MERGE (tur:Country {name: 'Turkey'})
+        MERGE (sgp:Country {name: 'Singapore'})
+        MERGE (vnm:Country {name: 'Vietnam'})
+        MERGE (tha:Country {name: 'Thailand'})
+        MERGE (idn:Country {name: 'Indonesia'})
+        MERGE (mys:Country {name: 'Malaysia'})
+        MERGE (phl:Country {name: 'Philippines'})
+        MERGE (are:Country {name: 'United Arab Emirates'})
+        MERGE (isr:Country {name: 'Israel'})
+        MERGE (qtr:Country {name: 'Qatar'})
+        MERGE (mex:Country {name: 'Mexico'})
+        MERGE (arg:Country {name: 'Argentina'})
+        MERGE (col:Country {name: 'Colombia'})
+        MERGE (chl:Country {name: 'Chile'})
+        MERGE (per:Country {name: 'Peru'})
+        MERGE (nga:Country {name: 'Nigeria'})
+        MERGE (ken:Country {name: 'Kenya'})
+        MERGE (mar:Country {name: 'Morocco'})
+        MERGE (eth:Country {name: 'Ethiopia'})
+        MERGE (tza:Country {name: 'Tanzania'})
+        MERGE (nzl:Country {name: 'New Zealand'})
+        MERGE (irl:Country {name: 'Ireland'})
+        MERGE (prt:Country {name: 'Portugal'})
+        MERGE (aut:Country {name: 'Austria'})
+
+        // 8. Add More Languages
+        MERGE (spa:Language {name: 'Spanish'})
+        MERGE (por:Language {name: 'Portuguese'})
+        MERGE (ger:Language {name: 'German'})
+        MERGE (ita_lang:Language {name: 'Italian'})
+        MERGE (rus_lang:Language {name: 'Russian'})
+        MERGE (kor_lang:Language {name: 'Korean'})
+        MERGE (tur_lang:Language {name: 'Turkish'})
+        MERGE (vie:Language {name: 'Vietnamese'})
+        MERGE (tha_lang:Language {name: 'Thai'})
+        MERGE (ind_lang:Language {name: 'Indonesian'})
+        MERGE (msa:Language {name: 'Malay'})
+        MERGE (swa:Language {name: 'Swahili'})
+        MERGE (nld_lang:Language {name: 'Dutch'})
+        MERGE (heb:Language {name: 'Hebrew'})
+        MERGE (ell:Language {name: 'Greek'})
+        MERGE (swe_lang:Language {name: 'Swedish'})
+        MERGE (nor_lang:Language {name: 'Norwegian'})
+        MERGE (pol_lang:Language {name: 'Polish'})
+        MERGE (tam:Language {name: 'Tamil'})
+
+        // 9. Add More Currencies & Connect Missing Old Currencies
+        MERGE (gbp:Currency {code: 'GBP', name: 'British Pound'})
+        MERGE (cny:Currency {code: 'CNY', name: 'Chinese Yuan'})
+        MERGE (cad:Currency {code: 'CAD', name: 'Canadian Dollar'})
+        MERGE (aud:Currency {code: 'AUD', name: 'Australian Dollar'})
+        MERGE (brl:Currency {code: 'BRL', name: 'Brazilian Real'})
+        MERGE (zar:Currency {code: 'ZAR', name: 'South African Rand'})
+        MERGE (rub:Currency {code: 'RUB', name: 'Russian Ruble'})
+        MERGE (krw:Currency {code: 'KRW', name: 'South Korean Won'})
+        MERGE (sgd:Currency {code: 'SGD', name: 'Singapore Dollar'})
+        MERGE (chf:Currency {code: 'CHF', name: 'Swiss Franc'})
+        MERGE (aed:Currency {code: 'AED', name: 'UAE Dirham'})
+        MERGE (mxn:Currency {code: 'MXN', name: 'Mexican Peso'})
+        MERGE (thb:Currency {code: 'THB', name: 'Thai Baht'})
+        MERGE (idr:Currency {code: 'IDR', name: 'Indonesian Rupiah'})
+        MERGE (try_curr:Currency {code: 'TRY', name: 'Turkish Lira'})
+        MERGE (ngn:Currency {code: 'NGN', name: 'Nigerian Naira'})
+
+        // 10. Add New Culture Groups
+        MERGE (latam:CultureGroup {name: 'Latin America'})
+        MERGE (sea:CultureGroup {name: 'Southeast Asian'})
+        MERGE (nordic:CultureGroup {name: 'Nordic'})
+        MERGE (med:CultureGroup {name: 'Mediterranean'})
+        MERGE (eu_group:CultureGroup {name: 'European Union'})
+        MERGE (ssa:CultureGroup {name: 'Sub-Saharan Africa'})
+
+        // 11. Map New & Missing Languages
+        MERGE (deu)-[:SPEAKS]->(ger)
+        MERGE (che)-[:SPEAKS]->(ger)
+        MERGE (che)-[:SPEAKS]->(fre)
+        MERGE (che)-[:SPEAKS]->(ita_lang)
+        MERGE (aut)-[:SPEAKS]->(ger)
+        MERGE (bra)-[:SPEAKS]->(por)
+        MERGE (prt)-[:SPEAKS]->(por)
+        MERGE (rus)-[:SPEAKS]->(rus_lang)
+        MERGE (kor)-[:SPEAKS]->(kor_lang)
+        MERGE (ita)-[:SPEAKS]->(ita_lang)
+        MERGE (esp)-[:SPEAKS]->(spa)
+        MERGE (mex)-[:SPEAKS]->(spa)
+        MERGE (arg)-[:SPEAKS]->(spa)
+        MERGE (col)-[:SPEAKS]->(spa)
+        MERGE (chl)-[:SPEAKS]->(spa)
+        MERGE (per)-[:SPEAKS]->(spa)
+        MERGE (nld)-[:SPEAKS]->(nld_lang)
+        MERGE (swe)-[:SPEAKS]->(swe_lang)
+        MERGE (nor)-[:SPEAKS]->(nor_lang)
+        MERGE (pol)-[:SPEAKS]->(pol_lang)
+        MERGE (grc)-[:SPEAKS]->(ell)
+        MERGE (tur)-[:SPEAKS]->(tur_lang)
+        MERGE (sgp)-[:SPEAKS]->(eng)
+        MERGE (sgp)-[:SPEAKS]->(man)
+        MERGE (sgp)-[:SPEAKS]->(msa)
+        MERGE (sgp)-[:SPEAKS]->(tam)
+        MERGE (vnm)-[:SPEAKS]->(vie)
+        MERGE (tha)-[:SPEAKS]->(tha_lang)
+        MERGE (idn)-[:SPEAKS]->(ind_lang)
+        MERGE (mys)-[:SPEAKS]->(msa)
+        MERGE (are)-[:SPEAKS]->(ara)
+        MERGE (qtr)-[:SPEAKS]->(ara)
+        MERGE (mar)-[:SPEAKS]->(ara)
+        MERGE (mar)-[:SPEAKS]->(fre)
+        MERGE (isr)-[:SPEAKS]->(heb)
+        MERGE (nga)-[:SPEAKS]->(eng)
+        MERGE (ken)-[:SPEAKS]->(eng)
+        MERGE (ken)-[:SPEAKS]->(swa)
+        MERGE (tza)-[:SPEAKS]->(swa)
+        MERGE (nzl)-[:SPEAKS]->(eng)
+        MERGE (irl)-[:SPEAKS]->(eng)
+
+        // 12. Map New & Missing Currencies
+        MERGE (gbr)-[:USES]->(gbp)
+        MERGE (chn)-[:USES]->(cny)
+        MERGE (can)-[:USES]->(cad)
+        MERGE (aus)-[:USES]->(aud)
+        MERGE (bra)-[:USES]->(brl)
+        MERGE (zaf)-[:USES]->(zar)
+        MERGE (rus)-[:USES]->(rub)
+        MERGE (kor)-[:USES]->(krw)
+        MERGE (ita)-[:USES]->(eur)
+        MERGE (esp)-[:USES]->(eur)
+        MERGE (nld)-[:USES]->(eur)
+        MERGE (irl)-[:USES]->(eur)
+        MERGE (prt)-[:USES]->(eur)
+        MERGE (aut)-[:USES]->(eur)
+        MERGE (grc)-[:USES]->(eur)
+        MERGE (che)-[:USES]->(chf)
+        MERGE (sgp)-[:USES]->(sgd)
+        MERGE (are)-[:USES]->(aed)
+        MERGE (mex)-[:USES]->(mxn)
+        MERGE (tha)-[:USES]->(thb)
+        MERGE (idn)-[:USES]->(idr)
+        MERGE (tur)-[:USES]->(try_curr)
+        MERGE (nga)-[:USES]->(ngn)
+        MERGE (nzl)-[:USES]->(aud)
+
+        // 13. Map New Culture Groups
+        MERGE (ita)-[:BELONGS_TO]->(west)
+        MERGE (ita)-[:BELONGS_TO]->(med)
+        MERGE (ita)-[:BELONGS_TO]->(eu_group)
+        MERGE (esp)-[:BELONGS_TO]->(west)
+        MERGE (esp)-[:BELONGS_TO]->(med)
+        MERGE (esp)-[:BELONGS_TO]->(eu_group)
+        MERGE (grc)-[:BELONGS_TO]->(med)
+        MERGE (grc)-[:BELONGS_TO]->(eu_group)
+        MERGE (nld)-[:BELONGS_TO]->(west)
+        MERGE (nld)-[:BELONGS_TO]->(eu_group)
+        MERGE (che)-[:BELONGS_TO]->(west)
+        MERGE (aut)-[:BELONGS_TO]->(west)
+        MERGE (aut)-[:BELONGS_TO]->(eu_group)
+        MERGE (irl)-[:BELONGS_TO]->(west)
+        MERGE (irl)-[:BELONGS_TO]->(anglo)
+        MERGE (irl)-[:BELONGS_TO]->(eu_group)
+        MERGE (swe)-[:BELONGS_TO]->(nordic)
+        MERGE (swe)-[:BELONGS_TO]->(eu_group)
+        MERGE (nor)-[:BELONGS_TO]->(nordic)
+        MERGE (pol)-[:BELONGS_TO]->(west)
+        MERGE (pol)-[:BELONGS_TO]->(eu_group)
+        MERGE (fra)-[:BELONGS_TO]->(eu_group)
+        MERGE (fra)-[:BELONGS_TO]->(med)
+        MERGE (deu)-[:BELONGS_TO]->(eu_group)
+        MERGE (prt)-[:BELONGS_TO]->(med)
+        MERGE (prt)-[:BELONGS_TO]->(eu_group)
+        
+        MERGE (bra)-[:BELONGS_TO]->(latam)
+        MERGE (mex)-[:BELONGS_TO]->(latam)
+        MERGE (arg)-[:BELONGS_TO]->(latam)
+        MERGE (col)-[:BELONGS_TO]->(latam)
+        MERGE (chl)-[:BELONGS_TO]->(latam)
+        MERGE (per)-[:BELONGS_TO]->(latam)
+        MERGE (mex)-[:BELONGS_TO]->(brics)
+        MERGE (arg)-[:BELONGS_TO]->(brics)
+
+        MERGE (sgp)-[:BELONGS_TO]->(sea)
+        MERGE (vnm)-[:BELONGS_TO]->(sea)
+        MERGE (tha)-[:BELONGS_TO]->(sea)
+        MERGE (idn)-[:BELONGS_TO]->(sea)
+        MERGE (mys)-[:BELONGS_TO]->(sea)
+        MERGE (phl)-[:BELONGS_TO]->(sea)
+        MERGE (idn)-[:BELONGS_TO]->(brics)
+
+        MERGE (are)-[:BELONGS_TO]->(arab)
+        MERGE (qtr)-[:BELONGS_TO]->(arab)
+        MERGE (mar)-[:BELONGS_TO]->(arab)
+        MERGE (tur)-[:BELONGS_TO]->(med)
+        
+        MERGE (nga)-[:BELONGS_TO]->(ssa)
+        MERGE (ken)-[:BELONGS_TO]->(ssa)
+        MERGE (eth)-[:BELONGS_TO]->(ssa)
+        MERGE (tza)-[:BELONGS_TO]->(ssa)
+        MERGE (zaf)-[:BELONGS_TO]->(ssa)
+
+        MERGE (nzl)-[:BELONGS_TO]->(west)
+        MERGE (nzl)-[:BELONGS_TO]->(anglo)
+
+        // 14. Dense Strategic, Economic & Regional Alliances
+        // ASEAN
+        MERGE (sgp)-[:DEEP_RELATION {type: 'ASEAN'}]-(idn)
+        MERGE (sgp)-[:DEEP_RELATION {type: 'ASEAN'}]-(mys)
+        MERGE (sgp)-[:DEEP_RELATION {type: 'ASEAN'}]-(tha)
+        MERGE (idn)-[:DEEP_RELATION {type: 'ASEAN'}]-(mys)
+        MERGE (idn)-[:DEEP_RELATION {type: 'ASEAN'}]-(vnm)
+        MERGE (tha)-[:DEEP_RELATION {type: 'ASEAN'}]-(vnm)
+        MERGE (phl)-[:DEEP_RELATION {type: 'ASEAN'}]-(sgp)
+
+        // EU Core Axis & Schengen
+        MERGE (fra)-[:DEEP_RELATION {type: 'EU Core Axis'}]-(deu)
+        MERGE (fra)-[:DEEP_RELATION {type: 'EU Core Axis'}]-(ita)
+        MERGE (deu)-[:DEEP_RELATION {type: 'EU Core Axis'}]-(ita)
+        MERGE (esp)-[:DEEP_RELATION {type: 'EU Core Axis'}]-(prt)
+        MERGE (deu)-[:DEEP_RELATION {type: 'EU Core Axis'}]-(nld)
+        MERGE (deu)-[:DEEP_RELATION {type: 'EU Core Axis'}]-(pol)
+        MERGE (aut)-[:DEEP_RELATION {type: 'EU Core Axis'}]-(deu)
+        
+        // USMCA (North American Trade Corridor)
+        MERGE (usa)-[:DEEP_RELATION {type: 'USMCA Trade Pact'}]-(mex)
+        MERGE (usa)-[:DEEP_RELATION {type: 'USMCA Trade Pact'}]-(can)
+        MERGE (can)-[:DEEP_RELATION {type: 'USMCA Trade Pact'}]-(mex)
+
+        // Mercosur & Latin America Trade
+        MERGE (bra)-[:DEEP_RELATION {type: 'Mercosur'}]-(arg)
+        MERGE (col)-[:DEEP_RELATION {type: 'Pacific Alliance'}]-(chl)
+        MERGE (col)-[:DEEP_RELATION {type: 'Pacific Alliance'}]-(per)
+        MERGE (mex)-[:DEEP_RELATION {type: 'Pacific Alliance'}]-(col)
+
+        // Intelligence & Defense (Five Eyes, AUKUS, NATO additions)
+        MERGE (usa)-[:DEEP_RELATION {type: 'Five Eyes Intelligence'}]-(gbr)
+        MERGE (usa)-[:DEEP_RELATION {type: 'Five Eyes Intelligence'}]-(can)
+        MERGE (usa)-[:DEEP_RELATION {type: 'Five Eyes Intelligence'}]-(aus)
+        MERGE (usa)-[:DEEP_RELATION {type: 'Five Eyes Intelligence'}]-(nzl)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Five Eyes Intelligence'}]-(aus)
+        MERGE (aus)-[:DEEP_RELATION {type: 'AUKUS Defense Pact'}]-(gbr)
+        MERGE (aus)-[:DEEP_RELATION {type: 'AUKUS Defense Pact'}]-(usa)
+        MERGE (aus)-[:DEEP_RELATION {type: 'Trans-Tasman Travel Arrangement'}]-(nzl)
+        MERGE (ita)-[:DEEP_RELATION {type: 'NATO'}]-(usa)
+        MERGE (esp)-[:DEEP_RELATION {type: 'NATO'}]-(fra)
+        MERGE (pol)-[:DEEP_RELATION {type: 'NATO'}]-(usa)
+        MERGE (tur)-[:DEEP_RELATION {type: 'NATO'}]-(usa)
+        MERGE (nor)-[:DEEP_RELATION {type: 'NATO'}]-(gbr)
+        MERGE (swe)-[:DEEP_RELATION {type: 'NATO'}]-(nor)
+
+        // Middle East & Africa Economic Corridors
+        MERGE (are)-[:DEEP_RELATION {type: 'Abraham Accords & Tech Pact'}]-(isr)
+        MERGE (are)-[:DEEP_RELATION {type: 'GCC Economic Bloc'}]-(sau)
+        MERGE (are)-[:DEEP_RELATION {type: 'GCC Economic Bloc'}]-(qtr)
+        MERGE (sau)-[:DEEP_RELATION {type: 'GCC Economic Bloc'}]-(qtr)
+        MERGE (ind)-[:DEEP_RELATION {type: 'IMEC Trade Corridor'}]-(are)
+        MERGE (ind)-[:DEEP_RELATION {type: 'IMEC Trade Corridor'}]-(sau)
+        MERGE (ken)-[:DEEP_RELATION {type: 'East African Community'}]-(tza)
+        MERGE (nga)-[:DEEP_RELATION {type: 'African Continental Free Trade'}]-(zaf)
+        MERGE (eth)-[:DEEP_RELATION {type: 'African Continental Free Trade'}]-(ken)
+
+        // 15. More Global Destinations (Balkans, Caribbean, Central Asia, Islands)
+        MERGE (hrv:Country {name: 'Croatia'})
+        MERGE (cze:Country {name: 'Czech Republic'})
+        MERGE (hun:Country {name: 'Hungary'})
+        MERGE (bel:Country {name: 'Belgium'})
+        MERGE (dnk:Country {name: 'Denmark'})
+        MERGE (fin:Country {name: 'Finland'})
+        MERGE (isl:Country {name: 'Iceland'})
+        MERGE (cri:Country {name: 'Costa Rica'})
+        MERGE (pan:Country {name: 'Panama'})
+        MERGE (jam:Country {name: 'Jamaica'})
+        MERGE (cub:Country {name: 'Cuba'})
+        MERGE (lka:Country {name: 'Sri Lanka'})
+        MERGE (npl:Country {name: 'Nepal'})
+        MERGE (mdv:Country {name: 'Maldives'})
+        MERGE (kaz:Country {name: 'Kazakhstan'})
+        MERGE (omn:Country {name: 'Oman'})
+        MERGE (jor:Country {name: 'Jordan'})
+        MERGE (gha:Country {name: 'Ghana'})
+
+        // 16. Languages & Currencies
+        MERGE (hrv_lang:Language {name: 'Croatian'})
+        MERGE (cze_lang:Language {name: 'Czech'})
+        MERGE (hun_lang:Language {name: 'Hungarian'})
+        MERGE (fin_lang:Language {name: 'Finnish'})
+        MERGE (sin:Language {name: 'Sinhala'})
+        MERGE (kaz_lang:Language {name: 'Kazakh'})
+        MERGE (npl_lang:Language {name: 'Nepali'})
+
+        MERGE (czk:Currency {code: 'CZK', name: 'Czech Koruna'})
+        MERGE (huf:Currency {code: 'HUF', name: 'Hungarian Forint'})
+        MERGE (dkk:Currency {code: 'DKK', name: 'Danish Krone'})
+        MERGE (sek:Currency {code: 'SEK', name: 'Swedish Krona'})
+        MERGE (kzt:Currency {code: 'KZT', name: 'Kazakhstani Tenge'})
+        MERGE (lkr:Currency {code: 'LKR', name: 'Sri Lankan Rupee'})
+
+        // 17. Map Languages and Currencies
+        MERGE (hrv)-[:SPEAKS]->(hrv_lang)
+        MERGE (cze)-[:SPEAKS]->(cze_lang)
+        MERGE (hun)-[:SPEAKS]->(hun_lang)
+        MERGE (fin)-[:SPEAKS]->(fin_lang)
+        MERGE (fin)-[:SPEAKS]->(swe_lang) // Swedish is also spoken in Finland
+        MERGE (bel)-[:SPEAKS]->(fre)
+        MERGE (bel)-[:SPEAKS]->(nld_lang) // Dutch/Flemish
+        MERGE (bel)-[:SPEAKS]->(ger)
+        MERGE (dnk)-[:SPEAKS]->(eng)
+        MERGE (cri)-[:SPEAKS]->(spa)
+        MERGE (pan)-[:SPEAKS]->(spa)
+        MERGE (cub)-[:SPEAKS]->(spa)
+        MERGE (jam)-[:SPEAKS]->(eng)
+        MERGE (lka)-[:SPEAKS]->(sin)
+        MERGE (lka)-[:SPEAKS]->(tam)
+        MERGE (npl)-[:SPEAKS]->(npl_lang)
+        MERGE (kaz)-[:SPEAKS]->(kaz_lang)
+        MERGE (kaz)-[:SPEAKS]->(rus_lang)
+        MERGE (omn)-[:SPEAKS]->(ara)
+        MERGE (jor)-[:SPEAKS]->(ara)
+        MERGE (gha)-[:SPEAKS]->(eng)
+
+        MERGE (hrv)-[:USES]->(eur)
+        MERGE (bel)-[:USES]->(eur)
+        MERGE (fin)-[:USES]->(eur)
+        MERGE (cze)-[:USES]->(czk)
+        MERGE (hun)-[:USES]->(huf)
+        MERGE (dnk)-[:USES]->(dkk)
+        MERGE (swe)-[:USES]->(sek)
+        MERGE (kaz)-[:USES]->(kzt)
+        MERGE (lka)-[:USES]->(lkr)
+        MERGE (pan)-[:USES]->(usd)
+
+        // 18. New Culture Groups
+        MERGE (balkan:CultureGroup {name: 'Balkan'})
+        MERGE (carib:CultureGroup {name: 'Caribbean'})
+        MERGE (centralasia:CultureGroup {name: 'Central Asian'})
+
+        MERGE (hrv)-[:BELONGS_TO]->(balkan)
+        MERGE (grc)-[:BELONGS_TO]->(balkan)
+        MERGE (cub)-[:BELONGS_TO]->(carib)
+        MERGE (jam)-[:BELONGS_TO]->(carib)
+        MERGE (kaz)-[:BELONGS_TO]->(centralasia)
+        MERGE (lka)-[:BELONGS_TO]->(southasia)
+        MERGE (npl)-[:BELONGS_TO]->(southasia)
+        MERGE (mdv)-[:BELONGS_TO]->(southasia)
+
+        // 19. Mega Travel & Geopolitical Alliances
+        
+        // The Schengen Area (MASSIVE for travel - no border checks between these!)
+        MERGE (fra)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(deu)
+        MERGE (fra)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(esp)
+        MERGE (esp)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(prt)
+        MERGE (deu)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(aut)
+        MERGE (aut)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(cze)
+        MERGE (cze)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(pol)
+        MERGE (aut)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(ita)
+        MERGE (ita)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(hrv)
+        MERGE (deu)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(nld)
+        MERGE (nld)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(bel)
+        MERGE (swe)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(nor)
+        MERGE (swe)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(fin)
+        MERGE (swe)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(dnk)
+        MERGE (che)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(deu)
+        MERGE (grc)-[:DEEP_RELATION {type: 'Schengen Borderless Zone'}]-(ita)
+
+        // Expanded BRICS+ (The 2024 Additions)
+        MERGE (are)-[:DEEP_RELATION {type: 'BRICS+'}]-(sau)
+        MERGE (are)-[:DEEP_RELATION {type: 'BRICS+'}]-(egy)
+        MERGE (are)-[:DEEP_RELATION {type: 'BRICS+'}]-(eth)
+        MERGE (ind)-[:DEEP_RELATION {type: 'BRICS+'}]-(are)
+        MERGE (chn)-[:DEEP_RELATION {type: 'BRICS+'}]-(sau)
+        MERGE (rus)-[:DEEP_RELATION {type: 'BRICS+'}]-(egy)
+        MERGE (bra)-[:DEEP_RELATION {type: 'BRICS+'}]-(eth)
+
+        // Commonwealth of Nations (Shared legal systems, English fluency, cricket culture)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Commonwealth'}]-(ind)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Commonwealth'}]-(aus)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Commonwealth'}]-(can)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Commonwealth'}]-(zaf)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Commonwealth'}]-(nga)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Commonwealth'}]-(ken)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Commonwealth'}]-(jam)
+        MERGE (gbr)-[:DEEP_RELATION {type: 'Commonwealth'}]-(lka)
+
+        // OPEC (Oil economies - highly relevant for global business travel)
+        MERGE (sau)-[:DEEP_RELATION {type: 'OPEC'}]-(are)
+        MERGE (sau)-[:DEEP_RELATION {type: 'OPEC'}]-(nga)
+        MERGE (are)-[:DEEP_RELATION {type: 'OPEC'}]-(qtr)
+
+        // Belt and Road Initiative (Infrastructure & New Trade paths)
+        MERGE (chn)-[:DEEP_RELATION {type: 'Belt & Road (BRI)'}]-(kaz)
+        MERGE (chn)-[:DEEP_RELATION {type: 'Belt & Road (BRI)'}]-(lka)
+        MERGE (chn)-[:DEEP_RELATION {type: 'Belt & Road (BRI)'}]-(npl)
+        MERGE (chn)-[:DEEP_RELATION {type: 'Belt & Road (BRI)'}]-(ken)
+        MERGE (chn)-[:DEEP_RELATION {type: 'Belt & Road (BRI)'}]-(ita)
         """
         
         async with self.driver.session() as session:
@@ -270,73 +670,6 @@ class Neo4jGraphService:
     # ... paste these inside the Neo4jGraphService class in app/database.py ...
 
     # =======================================================
-    # JOURNEY TRACKER & BOOMER MEMORY
-    # =======================================================
-    async def init_or_get_journey(self, user_id: str, target_country: str, profile_data: Optional[dict] = None) -> dict:
-        """Initializes a new journey or fetches an ongoing one."""
-        query = """
-        MERGE (u:User {id: $user_id})
-        MERGE (c:Country {name: $target_country})
-        MERGE (u)-[j:HAS_JOURNEY]->(c)
-        ON CREATE SET 
-            j.phase = 1,
-            j.origin_city = $origin_city,
-            j.destination_city = $destination_city,
-            j.citizenship = $citizenship,
-            j.age = $age,
-            j.purpose = $purpose,
-            j.created_at = timestamp()
-        RETURN properties(j) AS journey_state
-        """
-        params = {
-            "user_id": user_id,
-            "target_country": target_country.title(),
-            "origin_city": profile_data.get("origin_city", "") if profile_data else "",
-            "destination_city": profile_data.get("destination_city", "") if profile_data else "",
-            "citizenship": profile_data.get("citizenship", "") if profile_data else "",
-            "age": profile_data.get("age", 0) if profile_data else 0,
-            "purpose": profile_data.get("purpose", "") if profile_data else ""
-        }
-        async with self.driver.session() as session:
-            result = await session.run(cast(LiteralString, query), **params)
-            record = await result.single()
-            return record["journey_state"] if record else {}
-
-    async def update_journey_phase(self, user_id: str, target_country: str, new_phase: int):
-        """Moves Boomer and the User to the next step of the journey."""
-        query = """
-        MATCH (u:User {id: $user_id})-[j:HAS_JOURNEY]->(c:Country {name: $target_country})
-        SET j.phase = $new_phase
-        """
-        async with self.driver.session() as session:
-            await session.run(cast(LiteralString, query), user_id=user_id, target_country=target_country.title(), new_phase=new_phase)
-
-    async def log_journey_chat(self, user_id: str, target_country: str, sender: str, text: str):
-        """Saves Boomer's conversation history."""
-        query = """
-        MATCH (u:User {id: $user_id})-[j:HAS_JOURNEY]->(c:Country {name: $target_country})
-        CREATE (msg:JourneyMessage {
-            sender: $sender,
-            text: $text,
-            timestamp: timestamp()
-        })
-        CREATE (j)-[:HAS_MESSAGE]->(msg)
-        """
-        async with self.driver.session() as session:
-            await session.run(cast(LiteralString, query), user_id=user_id, target_country=target_country.title(), sender=sender, text=text)
-
-    async def get_journey_history(self, user_id: str, target_country: str) -> List[Dict[str, Any]]:
-        """Retrieves past chat messages to feed into Claude's memory."""
-        query = """
-        MATCH (u:User {id: $user_id})-[j:HAS_JOURNEY]->(c:Country {name: $target_country})-[:HAS_MESSAGE]->(msg:JourneyMessage)
-        RETURN msg.sender AS sender, msg.text AS text
-        ORDER BY msg.timestamp ASC LIMIT 20
-        """
-        async with self.driver.session() as session:
-            result = await session.run(cast(LiteralString, query), user_id=user_id, target_country=target_country.title())
-            return await result.data()
-
-    # =======================================================
     # AUTHENTICATION & USER PROFILES
     # =======================================================
     async def create_user(self, user_id: str, data: dict):
@@ -380,6 +713,45 @@ class Neo4jGraphService:
             result = await session.run(cast(LiteralString, query), user_id=user_id)
             record = await result.single()
             return dict(record) if record else {}
+    
+    async def save_user_journey(self, user_id: str, country_name: str, plan_data: dict):
+        import json
+        query = """
+        MATCH (u:User {id: $user_id})
+        MATCH (c:Country {name: $country_name})
+        MERGE (u)-[r:TRAVELLED_TO]->(c)
+        SET r.plan = $plan_data, r.date = timestamp()
+        RETURN r
+        """
+        async with self.driver.session() as session:
+            await session.run(cast(LiteralString, query), user_id=user_id, country_name=country_name, plan_data=json.dumps(plan_data))
+
+    # NEW: Fetch all archived journeys for a user
+    async def get_user_journeys(self, user_id: str) -> list:
+        import json
+        query = """
+        MATCH (u:User {id: $user_id})-[r:TRAVELLED_TO]->(c:Country)
+        RETURN c.name AS country, r.plan AS plan, r.date AS date
+        ORDER BY r.date DESC
+        """
+        async with self.driver.session() as session:
+            result = await session.run(cast(LiteralString, query), user_id=user_id)
+            records = await result.data()
+            
+            journeys = []
+            for rec in records:
+                plan_data = rec["plan"]
+                if isinstance(plan_data, str):
+                    try:
+                        plan_data = json.loads(plan_data)
+                    except:
+                        plan_data = {}
+                journeys.append({
+                    "country": rec["country"],
+                    "plan": plan_data,
+                    "timestamp": rec["date"]
+                })
+            return journeys
     
     async def get_user_by_id(self, user_id: str):
         """Fetches a user directly by their ID for password verification."""
