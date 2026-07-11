@@ -121,9 +121,6 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     return headers;
   };
 
-  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-  const API_URL = isLocal ? "http://localhost:8000" : VITE_API_URL;
-
   // ==========================================
   // FETCHERS & LOGIC
   // ==========================================
@@ -132,6 +129,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
   const fetchGlobalArchive = async (isClick = true) => {
     if (isClick) { navigate('/homepage/global-cache'); return; } 
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/briefings/global`);
       const result = await response.json();
       setHistoryData(result.data || []);
@@ -146,6 +144,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     if (isClick) { navigate('/homepage/archive'); return; }
     setIsSidebarLoading(true);
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/briefings/archive`, { headers: getAuthHeaders() });
       const result = await response.json();
       setHistoryData(result.data || []);
@@ -161,6 +160,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     if (isClick) { navigate('/homepage/history'); return; }
     setIsSidebarLoading(true);
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/history`, { headers: getAuthHeaders() });
       const result = await response.json();
       setHistoryData(result.data || []);
@@ -176,6 +176,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     if (isClick) { navigate('/homepage/travelled'); return; }
     setIsSidebarLoading(true);
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/journey/history`, { headers: getAuthHeaders() });
       const result = await response.json();
       const formatted = (result.data || []).map(j => ({
@@ -194,6 +195,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     if (isClick) { navigate('/homepage/compare-history'); return; }
     setIsSidebarLoading(true);
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/compare/history`, { headers: getAuthHeaders() });
       const result = await response.json();
       setHistoryData(result.data || []);
@@ -208,6 +210,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     if (isClick) { navigate('/homepage/profile'); return; }
     setIsSidebarLoading(true);
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/user/profile`, { headers: getAuthHeaders() });
       if (response.ok) {
         const json = await response.json();
@@ -233,6 +236,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     setProfileMsg({ type: "", text: "" });
     setIsSidebarLoading(true);
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/user/verify-password`, {
         method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ password: verifyPassword })
       });
@@ -258,7 +262,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
         age: editFormData.age ? parseInt(editFormData.age) : null,
         passport_blank_pages: editFormData.passport_blank_pages ? parseInt(editFormData.passport_blank_pages) : null
       };
-      
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/user/profile`, {
         method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(payload)
       });
