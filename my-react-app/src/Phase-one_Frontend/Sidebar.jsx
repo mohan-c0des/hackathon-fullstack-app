@@ -122,7 +122,7 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
   };
 
   const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-  const API_URL = isLocal ? "http://localhost:8000" : "https://travel-intelligence-backend-anjh.onrender.com";
+  const API_URL = isLocal ? "http://localhost:8000" : VITE_API_URL;
 
   // ==========================================
   // FETCHERS & LOGIC
