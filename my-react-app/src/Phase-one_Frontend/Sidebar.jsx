@@ -206,15 +206,12 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
   };
 
   // 6. Open Profile
-  const handleOpenProfile = async () => {
-    // ❌ Removed the navigate/return trap
-    setProfileMsg({ type: "", text: "" }); // Good idea to clear old messages!
+  const handleOpenProfile = async (isClick = true) => {
+    if (isClick) { navigate('/homepage/profile'); return; }
     setIsSidebarLoading(true);
-    
     try {
       const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${API_URL}/api/user/profile`, { headers: getAuthHeaders() });
-      
       if (response.ok) {
         const json = await response.json();
         setUserProfile(json.data);
@@ -226,15 +223,11 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
           passport_blank_pages: json.data.passport_blank_pages || ""
         });
         setProfileViewMode("view");
-        setShowProfileModal(true); // This will actually run now!
-      } else {
-        console.error("Failed to load profile", response.status);
+        setProfileMsg({ type: "", text: "" });
+        setShowProfileModal(true);
       }
-    } catch (error) { 
-      console.error("Failed to load profile", error); 
-    } finally { 
-      setIsSidebarLoading(false); 
-    }
+    } catch (error) { console.error("Failed to load profile", error); }
+    finally { setIsSidebarLoading(false); }
   };
 
   // 7. Verify Password
