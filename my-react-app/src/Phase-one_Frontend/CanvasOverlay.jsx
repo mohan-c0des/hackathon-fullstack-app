@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
 
-const PURPOSE_PRESETS = ["Academic / Studying", "Travel / Tourism", "Family & Friends", "Business Operations"];
+const PURPOSE_PRESETS = ["Academic / Studying", "Tourism", "Family & Friends", "Business Operations", "Medical/Health", "Relocation" ];
 const INDIC_LANGUAGES = [
   { code: "en-IN", label: "English (Default)", hasAudio: false },
   { code: "hi-IN", label: "Hindi", hasAudio: true },
   { code: "te-IN", label: "Telugu", hasAudio: true },
   { code: "ta-IN", label: "Tamil", hasAudio: true },
   { code: "bn-IN", label: "Bengali", hasAudio: true },
-  { code: "mr-IN", label: "Marathi", hasAudio: true }
+  { code: "mr-IN", label: "Marathi", hasAudio: true },
+  { code: "ml-IN", label: "Malayalam", hasAudio: true},
+  { code: "kn-IN", label: "Kannada", hasAudio: true}
 ];
 const TABS = [
   { id: "briefing", label: "AI Briefing" }, { id: "rules", label: "Rules" },

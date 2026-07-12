@@ -487,10 +487,19 @@ export default function JourneyPage({ state, dispatch }) {
         )}
 
         {viewPhase === "waking" && (
+          <div>
+          <div>
           <svg className="absolute right-[0%] top-[-20%] w-24 h-24 animate-poke z-[80] drop-shadow-[0_0_15px_rgba(252,165,165,0.4)]" viewBox="0 0 24 24" fill="#fca5a5" stroke="#ef4444" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 10a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 0 1 1h.5a1.5 1.5 0 0 1 1.5 1.5v4.5a3 3 0 0 1-3 3H9a4 4 0 0 1-4-4v-5a2 2 0 0 1 2-2h2V10z"/>
             <path d="M13 10V4a2 2 0 0 1 4 0v6"/>
           </svg>
+          </div>
+          <div>
+          <p className="text-red-500 font-semibold">
+            Wait!
+          </p>
+          </div>
+          </div>
         )}
 
         <div className={`w-full h-full flex items-center justify-center ${isAwake ? "animate-hover-fast" : "animate-breathe"}`}>
@@ -528,6 +537,7 @@ export default function JourneyPage({ state, dispatch }) {
             </g>
           </svg>
         </div>
+
       </div>
     );
   };
@@ -973,6 +983,10 @@ export default function JourneyPage({ state, dispatch }) {
                       <option value="hi-IN" className="bg-slate-800 text-white">Hindi</option>
                       <option value="ta-IN" className="bg-slate-800 text-white">Tamil</option>
                       <option value="bn-IN" className="bg-slate-800 text-white">Bengali</option>
+                      <option value="mr-IN" className="bg-slate-800 text-white">Marathi</option>
+                      <option value="ml-IN" className="bg-slate-800 text-white">Malayalam</option>
+                      <option value="kn-IN" className="bg-slate-800 text-white">Kannada</option>
+
                     </select>
                     {/* Custom tiny arrow for sleek look */}
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">▼</div>

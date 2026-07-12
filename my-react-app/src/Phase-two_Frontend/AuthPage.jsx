@@ -168,7 +168,7 @@ export default function AuthOverlay({ dispatch }) {
               ← Back
             </button>
             <h2 className="text-2xl font-black text-white tracking-widest uppercase">
-              {view === "login" ? "Secure Login" : "Passport Registration"}
+              {view === "login" ? "Login Profile" : "Profile Registration"}
             </h2>
             <div className="w-[60px]"></div>
           </div>
@@ -310,7 +310,7 @@ export default function AuthOverlay({ dispatch }) {
             
             <div className="flex-none pt-6 border-t border-slate-700 mt-4">
               <button type="submit" disabled={loading} className={`w-full py-4 rounded-xl font-bold text-white transition-all shadow-lg text-lg ${view === "login" ? "bg-violet-600 hover:bg-violet-500" : "bg-sky-600 hover:bg-sky-500"} disabled:opacity-50 cursor-pointer`}>
-                {loading ? "AUTHENTICATING..." : (view === "login" ? "ENTER SYSTEM" : "INITIALIZE PASSPORT")}
+                {loading ? "AUTHENTICATING..." : (view === "login" ? "ENTER SYSTEM" : "CREATE & ENTER")}
               </button>
             </div>
           </form>

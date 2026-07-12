@@ -226,6 +226,13 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
         setProfileMsg({ type: "", text: "" });
         setShowProfileModal(true);
       }
+      else if (response.status === 401) {
+        dispatch({ type: "LOGOUT" }); // Force clear the bad token
+        navigate('/auth'); // Send them to the login page
+      }
+      else {
+        console.error("Failed to load profile", response.status);
+      }
     } catch (error) { console.error("Failed to load profile", error); }
     finally { setIsSidebarLoading(false); }
   };
@@ -279,6 +286,20 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
     finally { setIsSidebarLoading(false); }
   };
 
+  // ==========================================
+  // INPUT VALIDATION LOGIC FOR BUTTONS & ERRORS
+  // ==========================================
+  const allValidCountryNames = useMemo(() => geoFeatures.map(g => g.properties.name), [geoFeatures]);
+
+  const isSearchCountryValid = allValidCountryNames.includes(state.countrySearch);
+  const showSearchError = state.countrySearch?.trim() !== "" && !isSearchCountryValid;
+
+  const isCountryAValid = allValidCountryNames.includes(compareData.countryA);
+  const showCountryAError = compareData.countryA?.trim() !== "" && !isCountryAValid;
+
+  const isCountryBValid = allValidCountryNames.includes(compareData.countryB);
+  const showCountryBError = compareData.countryB?.trim() !== "" && !isCountryBValid;
+
   const activeTheme = state.theme || "treasure";
 
   return (
@@ -329,6 +350,14 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
               />
               <button className="px-3 bg-slate-900/60 border border-slate-700 rounded-r-lg text-slate-500 hover:text-violet-500 hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => setShowCountryDrop(!showCountryDrop)}>▾</button>
             </div>
+            
+            {/* --- NEW SEARCH ERROR MESSAGE --- */}
+            {showSearchError && (
+              <div className="text-red-400 text-[0.65rem] mt-1.5 font-semibold">
+                Country you are looking for is not available, please select from dropdown.
+              </div>
+            )}
+
             {showCountryDrop && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f172a] border border-slate-700 rounded-lg max-h-[200px] overflow-y-auto z-50 shadow-xl custom-scrollbar">
                 {filteredCountries.map(name => (
@@ -360,17 +389,15 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
           <button 
             className={`
               w-full mt-2 p-4 rounded-lg font-bold text-[1.1rem] transition-all duration-200 uppercase tracking-widest
-              ${state.selectedCountry && !state.isLoading
+              ${isSearchCountryValid && !state.isLoading
                 ? "bg-gradient-to-br from-violet-600 to-indigo-500 text-white cursor-pointer shadow-[0_4px_20px_rgba(139,92,246,0.4)] hover:brightness-110 hover:-translate-y-[2px]" 
                 : "bg-slate-800 text-slate-500 cursor-not-allowed"}
             `}
-            onClick={() => fetchBriefing(state.selectedCountry, state.purposeInput)}
-            disabled={!state.selectedCountry || state.isLoading}
+            onClick={() => fetchBriefing(state.countrySearch, state.purposeInput)}
+            disabled={!isSearchCountryValid || state.isLoading}
           >
             {state.isLoading ? "GENERATING INTEL..." : "GO!"}
           </button>
-
-
 
         </div>
       )}
@@ -387,6 +414,14 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
               <input type="text" className="flex-1 p-2 bg-slate-900/60 border border-slate-700 border-r-0 rounded-l-lg text-slate-50 text-sm outline-none focus:border-sky-500" placeholder="First country..." value={compareData.countryA} onChange={(e) => { setCompareData({...compareData, countryA: e.target.value}); setShowCompareCountryADrop(true); }} onFocus={() => setShowCompareCountryADrop(true)} />
               <button className="px-2 bg-slate-900/60 border border-slate-700 rounded-r-lg text-slate-500 hover:text-sky-500 transition-colors cursor-pointer" onClick={() => setShowCompareCountryADrop(!showCompareCountryADrop)}>▾</button>
             </div>
+            
+            {/* --- NEW COUNTRY A ERROR MESSAGE --- */}
+            {showCountryAError && (
+              <div className="text-red-400 text-[0.65rem] mt-1 font-semibold">
+                Country you are looking for is not available, please select from dropdown.
+              </div>
+            )}
+
             {showCompareCountryADrop && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f172a] border border-slate-700 rounded-lg max-h-[150px] overflow-y-auto z-50 shadow-xl custom-scrollbar">
                 {filteredCountriesA.map(name => (<div key={name} className="p-2 text-sm text-slate-400 cursor-pointer hover:bg-sky-500 hover:text-white" onClick={() => { setCompareData({...compareData, countryA: name}); setShowCompareCountryADrop(false); }}>{name}</div>))}
@@ -400,6 +435,14 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
               <input type="text" className="flex-1 p-2 bg-slate-900/60 border border-slate-700 border-r-0 rounded-l-lg text-slate-50 text-sm outline-none focus:border-sky-500" placeholder="Second country..." value={compareData.countryB} onChange={(e) => { setCompareData({...compareData, countryB: e.target.value}); setShowCompareCountryBDrop(true); }} onFocus={() => setShowCompareCountryBDrop(true)} />
               <button className="px-2 bg-slate-900/60 border border-slate-700 rounded-r-lg text-slate-500 hover:text-sky-500 transition-colors cursor-pointer" onClick={() => setShowCompareCountryBDrop(!showCompareCountryBDrop)}>▾</button>
             </div>
+
+            {/* --- NEW COUNTRY B ERROR MESSAGE --- */}
+            {showCountryBError && (
+              <div className="text-red-400 text-[0.65rem] mt-1 font-semibold">
+                Country you are looking for is not available, please select from dropdown.
+              </div>
+            )}
+
             {showCompareCountryBDrop && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f172a] border border-slate-700 rounded-lg max-h-[150px] overflow-y-auto z-50 shadow-xl custom-scrollbar">
                 {filteredCountriesB.map(name => (<div key={name} className="p-2 text-sm text-slate-400 cursor-pointer hover:bg-sky-500 hover:text-white" onClick={() => { setCompareData({...compareData, countryB: name}); setShowCompareCountryBDrop(false); }}>{name}</div>))}
@@ -436,12 +479,15 @@ export default function Sidebar({ state, dispatch, geoFeatures, triggerCountryFo
           <button 
             className={`
               w-full mt-2 p-3 rounded-lg font-bold text-[1.1rem] transition-all duration-200 uppercase tracking-widest
-              ${compareData.countryA && compareData.countryB 
+              ${isCountryAValid && isCountryBValid 
                 ? "bg-gradient-to-br from-sky-600 to-blue-500 text-white cursor-pointer shadow-[0_4px_20px_rgba(14,165,233,0.4)] hover:brightness-110 hover:-translate-y-[2px]" 
                 : "bg-slate-800 text-slate-500 cursor-not-allowed"}
             `}
-            onClick={() => fetchComparison(compareData)}
-            disabled={!compareData.countryA || !compareData.countryB}
+            onClick={() => {
+              const finalBasis = compareData.basis.trim() === "" ? "General" : compareData.basis;
+              fetchComparison({ ...compareData, basis: finalBasis });
+            }}
+            disabled={!isCountryAValid || !isCountryBValid}
           >
             COMPARE!
           </button>
