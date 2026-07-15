@@ -94,7 +94,7 @@ async def verify_user_password(payload: PasswordVerify, user_id: str = Depends(g
 @router.put("/api/user/profile")
 async def update_profile(payload: UserUpdate, user_id: str = Depends(get_current_user)):
     """Updates the user's secure travel profile in the database."""
-    # Exclude unset fields so we don't wipe out data accidentally
+    
     update_data = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
     try:
         await graph_db.update_user_profile(user_id, update_data)

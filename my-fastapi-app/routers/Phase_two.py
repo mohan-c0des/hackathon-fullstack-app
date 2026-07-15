@@ -49,26 +49,26 @@ async def journey_interaction(schema: JourneyData):
     that it does not exist. (remember: im not talking about spelling mistakes.)
     """
     
-    # We pass a thread_id so the agent remembers this specific user's plan!
+    
     config = RunnableConfig(configurable={"thread_id": schema.session_id})
     
-    # Execute the LangGraph workflow
+    
     result = await boomer_agent.ainvoke({"messages": [HumanMessage(content=prompt)]}, config)
     
-    # ... existing code (right after result = await boomer_agent.ainvoke...) ...
+    
     messages = result.get("messages", [])
     
     structured_data = None
     
     for msg in reversed(messages):
-        # Method 1: Standard LangChain tool_calls attribute
+        
         if hasattr(msg, "tool_calls") and msg.tool_calls:
             for tool_call in msg.tool_calls:
                 if tool_call["name"] == "structure_complete_journey_plan":
                     structured_data = tool_call["args"]
                     break
         
-        # Method 2: Fallback for models (like Gemini) that nest it in additional_kwargs
+        
         elif hasattr(msg, "additional_kwargs") and "tool_calls" in msg.additional_kwargs:
             for tool_call in msg.additional_kwargs["tool_calls"]:
                 if tool_call.get("function", {}).get("name") == "structure_complete_journey_plan":
@@ -80,7 +80,7 @@ async def journey_interaction(schema: JourneyData):
             break
             
     if not structured_data:
-        # If it fails, print the AI's last message to the terminal so we can debug!
+        
         print("\n--- AI FAILED TO USE TOOL. HERE IS WHAT IT SAID INSTEAD ---")
         if messages:
             print(messages[-1].content)
@@ -88,10 +88,10 @@ async def journey_interaction(schema: JourneyData):
         
         raise HTTPException(status_code=500, detail="Boomer failed to structure the journey plan properly.")
 
-    # Extract the dictionaries the LLM generated...
-    # ... rest of your code ...
+    
+    
 
-    # ... inside phase_two.py, right after intercepting structured_data ...
+    
 
     # Extract the Lists of Dictionaries
     pre_list = structured_data.get("pre_travel_output", [])
@@ -112,7 +112,7 @@ async def journey_interaction(schema: JourneyData):
     transit_keys, transit_values = extract_ordered_data(transit_list)
     post_keys, post_values = extract_ordered_data(post_list)
 
-    # Format exactly as your frontend array handler expects!
+    
     return {
         "output": [pre_list, transit_list, post_list],
         "step_names": {
@@ -137,7 +137,7 @@ async def question(schema: JourneyQuestion):
     """Answers user questions using LangGraph Memory and Dynamic API Fetching."""
     prompt = f"User Question: {schema.question}\nUser is currently looking at step: {schema.current_step}\nExecute clarify_doubts tool to fetch real-time data if needed, answer the question, and ask if they are ready to proceed."
 
-    # Pass the SAME thread_id so the AI remembers the plan it just generated!
+    
     config = RunnableConfig(configurable={"thread_id": schema.session_id})
     
     result = await boomer_agent.ainvoke({"messages": [HumanMessage(content=prompt)]}, config)
@@ -155,7 +155,7 @@ async def save_journey(schema: JourneySaveRequest, user_id: str = Depends(get_cu
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# NEW: Fetch Archived Journeys Endpoint
+
 @router.get("/api/journey/history")
 async def get_journey_history(user_id: str = Depends(get_current_user)):
     try:

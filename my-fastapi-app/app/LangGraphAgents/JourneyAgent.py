@@ -279,7 +279,7 @@ async def gather_full_intelligence(country: str, news_query: str) -> str:
         # Run all network requests simultaneously to save massive amounts of time
         altoal_data, rest_data, news_data = await asyncio.gather(altoal_task, rest_task, news_task)
 
-    # Compile the intelligence package
+    
     intelligence_package = {
         "status": "Data compilation successful (with potential API fallbacks noted inside).",
         "primary_data_altoal": altoal_data,
@@ -288,7 +288,6 @@ async def gather_full_intelligence(country: str, news_query: str) -> str:
         "LLM_INSTRUCTION": "Analyze this JSON. Extract ONLY details relevant to the user's prompt. If data is missing or marked as error, seamlessly use your internal supreme knowledge to fill the gaps without apologizing."
     }
     
-    # We dump it to a string because LangGraph tools must return strings
     return json.dumps(intelligence_package, indent=2)
 
 @tool
@@ -394,7 +393,7 @@ async def generate_post_travelling_steps(
     Also give advices and preparations for the next steps he has to do based on the {purpose}.
     Final goal is to achieve the way of living in {exact_destination}.
     After all, final step should be completely saying farewell and appreciating that user did a great job."""
-    # 1. We need the coordinates again for OpenTripMap
+
     lon, lat = await fetch_csc_coordinates(target_iso, exact_destination)
     
     # 2. Parallel fetch for all local intelligence
@@ -413,7 +412,6 @@ async def generate_post_travelling_steps(
     INSTRUCTION: Generate post-travel survival steps, hotel/stay recommendations, and cultural itineraries based exactly on these POIs and Weather.
     """
 
-# In app/JourneyAgent.py
 
 @tool
 def structure_complete_journey_plan(

@@ -60,8 +60,6 @@ async def get_optional_user(token: Optional[str] = Depends(oauth2_scheme_optiona
     if not token:
         return "guest_user"
     try:
-        # If they provided a token, strictly verify it using our existing auth logic
         return await get_current_user(token)
     except HTTPException:
-        # If the token is invalid/expired, fall back to guest instead of crashing
         return "guest_user"

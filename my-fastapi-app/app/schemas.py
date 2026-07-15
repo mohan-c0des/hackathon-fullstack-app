@@ -77,7 +77,7 @@ class JourneySaveRequest(BaseModel):
     session_id: str
     target_country: str
     purpose: str
-    journey_plan: Dict[str, Any]  # Matches what the React frontend sends
+    journey_plan: Dict[str, Any]
     chat_history: list = []
 
 class UserRegister(BaseModel):

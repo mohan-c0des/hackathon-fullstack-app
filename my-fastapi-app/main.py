@@ -1,14 +1,14 @@
 from dotenv import load_dotenv, find_dotenv
 
-# 🚨 BULLETPROOF FIX: Use find_dotenv() to locate the .env file automatically, 
-# and override=True to ensure system variables don't block it.
+
+
 load_dotenv(find_dotenv(), override=True)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-# AI Agents & DB (Now safe to import because .env is forcefully loaded!)
+
 from app.database import graph_db
 from routers import Authentication, Phase_one, Phase_two
 
@@ -42,7 +42,7 @@ app = FastAPI(title="Travel Intelligence API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    # Allow local testing AND your live Vercel URL (or just use "*" to allow everything for the hackathon)
+    
     allow_origins=[
         "http://localhost:5173", 
         "http://127.0.0.1:5173", 

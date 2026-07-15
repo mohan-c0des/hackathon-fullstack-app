@@ -47,13 +47,13 @@ async def _fetch_rest_countries(client: httpx.AsyncClient, country: str) -> dict
     """Fetches country profile facts using the RestCountries V5 Enterprise endpoint."""
     clean_country = country.strip().lower()
     
-    # Grab the V5 API key from your environment
+    
     api_key = os.getenv("RESTCOUNTRIES_V5_KEY")
     if not api_key:
         print("[API ERROR] RESTCOUNTRIES_V5_KEY is missing from environment variables.")
         return _get_fallback_data(country)
 
-    # V5 Endpoint implementation with Bearer authentication
+    
     url = f"https://api.restcountries.com/countries/v5?q={clean_country}&limit=1"
     headers = {
         "Authorization": f"Bearer {api_key}"
@@ -61,7 +61,7 @@ async def _fetch_rest_countries(client: httpx.AsyncClient, country: str) -> dict
     
     print(f"\n[API CALL] Fetching RestCountries V5 data for: {clean_country}...")
     try:
-        # httpx requires follow_redirects=True for enterprise routing
+        
         response = await client.get(url, headers=headers, timeout=10.0, follow_redirects=True)
         print(f"[API RESPONSE] RestCountries V5 Status Code: {response.status_code}")
         
@@ -69,7 +69,7 @@ async def _fetch_rest_countries(client: httpx.AsyncClient, country: str) -> dict
             raw_data = response.json()
             country_data = raw_data[0] if isinstance(raw_data, list) and len(raw_data) > 0 else {}
             
-            # FIX: Safely format the population only if it's a number
+            
             pop = country_data.get('population', 'Unknown')
             pop_str = f"{pop:,}" if isinstance(pop, int) else str(pop)
             
@@ -77,7 +77,7 @@ async def _fetch_rest_countries(client: httpx.AsyncClient, country: str) -> dict
                 "name": country_data.get("names", {}).get("common", country.capitalize()),
                 "capital": country_data.get("capital", ["Unknown"])[0] if isinstance(country_data.get("capital"), list) else "Unknown",
                 "region": country_data.get("region", "Unknown"),
-                "population": pop_str, # Use the safe string here
+                "population": pop_str, 
                 "currencies": list(country_data.get("currencies", {}).keys()) if isinstance(country_data.get("currencies"), dict) else [],
                 "languages": list(country_data.get("languages", {}).values()) if isinstance(country_data.get("languages"), dict) else []
             }
@@ -145,13 +145,13 @@ async def gather_full_intelligence(country: str, news_query: str) -> str:
         "LLM_INSTRUCTION": "Analyze this JSON. Extract ONLY details relevant to the user's prompt. If data is missing or marked as error, seamlessly use your internal supreme knowledge to fill the gaps without apologizing."
     }
     
-    # We dump it to a string because LangGraph tools must return strings
+    
     return json.dumps(intelligence_package, indent=2)
 
 import asyncio
 
-# Note: Replace `fetch_live_country_data` with whatever the actual name 
-# of your existing API-fetching function is in your codebase!
+
+
 
 # ==========================================
 # 4. SIMULTANEOUS COMPARISON GATHERER
@@ -207,10 +207,10 @@ async def compare_countries_tool(countryA: str, countryB: str, purpose: str, bas
     try:
         print(f"\n[TOOL FIRED] compare_countries_tool for {countryA} vs {countryB}")
         
-        # Fire the parallel intelligence gatherer we built earlier
+        
         raw_intel = await gather_comparison_intelligence(countryA, countryB, purpose)
         
-        # Package it beautifully with strict structural prompting for the LLM
+        
         combined_package = {
             "status": "Comparative baseline compilation successful.",
             "basis_of_comparison": basis,
@@ -231,7 +231,7 @@ async def compare_countries_tool(countryA: str, countryB: str, purpose: str, bas
         return json.dumps(combined_package, indent=2)
         
     except Exception as e:
-        # THIS fallback return is what fixes the "None is not assignable to str" error!
+        
         return f"Error gathering comparison data: {str(e)}"
 
 
@@ -269,7 +269,7 @@ async def resolve_compare_doubt_tool(countryA: str, countryB: str, purpose: str,
     try:
         print(f"\n[TOOL FIRED] resolve_compare_doubt_tool for {countryA} vs {countryB} | Doubt: {doubt}")
         
-        # Reusing the parallel intelligence gatherer, but injecting the 'doubt' into the news search query!
+        
         raw_intel = await gather_comparison_intelligence(countryA, countryB, f"{purpose} {doubt}")
         
         package = {
@@ -289,7 +289,7 @@ async def resolve_compare_doubt_tool(countryA: str, countryB: str, purpose: str,
         return json.dumps(package, indent=2)
     
     except Exception as e:
-        # THIS fallback return ensures a string is ALWAYS returned!
+        
         return f"Error gathering comparative doubt data: {str(e)}"
 
 # ==========================================

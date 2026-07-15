@@ -401,7 +401,7 @@ async def compare_countries(request: CompareRequest, user_id: str = Depends(get_
                 })
                 MERGE (u)-[:PERFORMED_COMPARISON]->(c)
                 """
-                # Using your exact async pattern!
+                
                 async with graph_db.driver.session() as session:
                     await session.run(
                         query, 
@@ -413,7 +413,7 @@ async def compare_countries(request: CompareRequest, user_id: str = Depends(get_
                 print("[DB] Comparison saved to AuraDB successfully!")
             except Exception as db_err:
                 print(f"[DB ERROR] Failed to save comparison: {db_err}")
-        # ==========================================
+        
 
         return {
             "countryA": request.countryA, "countryB": request.countryB,
@@ -442,11 +442,11 @@ async def generate_tab_briefing(request: Tabs, user_id: str = Depends(get_option
         
         async def stream_generator():
             try:
-                # Robustly stream tokens and satisfy strict type checkers
+                
                 async for event in graph_agent.astream_events({"messages": [HumanMessage(content=prompt)]}, version="v2"):
                     if event.get("event") == "on_chat_model_stream":
                         
-                        # SAFELY extract the chunk using .get()
+                        
                         chunk_obj = event.get("data", {}).get("chunk")
                         
                         if chunk_obj and hasattr(chunk_obj, "content"):
@@ -484,11 +484,11 @@ async def answer_doubt(request: Doubt, user_id: str = Depends(get_optional_user)
         
         async def stream_generator():
             try:
-                # Robustly stream tokens and satisfy strict type checkers
+                
                 async for event in graph_agent.astream_events({"messages": [HumanMessage(content=prompt)]}, version="v2"):
                     if event.get("event") == "on_chat_model_stream":
                         
-                        # SAFELY extract the chunk using .get()
+                        
                         chunk_obj = event.get("data", {}).get("chunk")
                         
                         if chunk_obj and hasattr(chunk_obj, "content"):
@@ -509,7 +509,7 @@ async def answer_doubt(request: Doubt, user_id: str = Depends(get_optional_user)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-# ... existing code ...
+
 @router.post("/api/compare-doubt")
 async def answer_compare_doubt(request: CompareDoubt, user_id: str = Depends(get_optional_user)):
     """Answers a specific user doubt regarding the comparison of two countries."""
@@ -528,7 +528,7 @@ async def answer_compare_doubt(request: CompareDoubt, user_id: str = Depends(get
         
         async def stream_generator():
             try:
-                # We use the raw graph_agent to stream the response back just like standard doubts
+                
                 async for event in graph_agent.astream_events({"messages": [HumanMessage(content=prompt)]}, version="v2"):
                     if event.get("event") == "on_chat_model_stream":
                         chunk_obj = event.get("data", {}).get("chunk")
@@ -562,11 +562,11 @@ async def translate_text(payload: TranslatePayload, user_id: str = Depends(get_o
 
     url = "https://api.sarvam.ai/translate"
     
-    # 1. Strip Markdown syntax as requested
+    
     clean_text = payload.text.replace("**", "").replace("###", "").replace("##", "").replace("#", "")
     
-    # 2. Safely chunk the text into 1800-character pieces (safely under the 2000 limit)
-    # break_long_words=False ensures we don't cut words in half!
+    
+    
     chunks = textwrap.wrap(clean_text, width=1800, break_long_words=False, break_on_hyphens=False)
     
     headers = {"api-subscription-key": api_key, "Content-Type": "application/json"}
@@ -578,7 +578,7 @@ async def translate_text(payload: TranslatePayload, user_id: str = Depends(get_o
             "target_language_code": payload.target_lang,
             "speaker_gender": "Male",
             "mode": "formal",
-            "model": "sarvam-translate:v1" #
+            "model": "sarvam-translate:v1" 
         }
         try:
             resp = await client.post(url, json=req_body, headers=headers, timeout=20.0)
@@ -592,12 +592,12 @@ async def translate_text(payload: TranslatePayload, user_id: str = Depends(get_o
             print(f"[SARVAM CHUNK FATAL] {str(e)}")
             return chunk_text
 
-    # 3. Translate all chunks concurrently using a single connection pool
+    
     async with httpx.AsyncClient() as client:
         tasks = [fetch_chunk(client, chunk) for chunk in chunks]
         translated_chunks = await asyncio.gather(*tasks)
         
-    # 4. Stitch the translated chunks back together
+    
     final_translated_text = " ".join(translated_chunks)
 
     return {"data": final_translated_text}

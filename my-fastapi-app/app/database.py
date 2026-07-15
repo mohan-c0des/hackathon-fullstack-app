@@ -560,7 +560,7 @@ class Neo4jGraphService:
             await session.run(cast(LiteralString, seed_data_query))
 
     async def log_user_search(self, user_id: str, country_name: str, purpose: str):
-        # 🛡️ PRIVACY SHIELD: Do not track guest users AT ALL.
+        
         if user_id == "guest_user":
             return 
             
@@ -614,7 +614,7 @@ class Neo4jGraphService:
 
     async def save_briefing(self, user_id: str, country_name: str, purpose: str, content: str):
         """Saves a newly generated AI briefing. Guests save anonymously to protect privacy."""
-        # 🛡️ PRIVACY SHIELD: Guests save to a faceless system node to save API limits.
+        
         safe_user_id = "global_cache_system" if user_id == "guest_user" else user_id
         
         query = """
@@ -667,7 +667,7 @@ class Neo4jGraphService:
             result = await session.run(cast(LiteralString, query), user_id=user_id)
             records = await result.data()
             return records
-    # ... paste these inside the Neo4jGraphService class in app/database.py ...
+    
 
     # =======================================================
     # AUTHENTICATION & USER PROFILES
@@ -763,7 +763,7 @@ class Neo4jGraphService:
 
     async def update_user_profile(self, user_id: str, data: dict):
         """Updates only the fields provided in the user's profile."""
-        # Dynamically build the SET clauses so we don't overwrite things with nulls
+        
         set_clauses = ", ".join([f"u.{k} = ${k}" for k in data.keys() if data[k] is not None])
         if not set_clauses: return
         
