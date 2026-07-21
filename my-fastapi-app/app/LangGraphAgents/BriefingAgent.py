@@ -299,7 +299,7 @@ tools = [generate_country_briefing_tool, compare_countries_tool, explore_tab_inf
 tool_node = ToolNode(tools=tools)
 
 # Using 2.5-flash for blazing fast, high-IQ reasoning
-llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.3).bind_tools(tools)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3).bind_tools(tools)
 
 SYSTEM_PROMPT = """You are 'Atlas', an elite, omniscient Travel Intelligence AI. 
 You are equipped with tools that feed you massive amounts of raw JSON data from multiple global databases (Altoal, RestCountries, NewsAPI).

@@ -469,7 +469,7 @@ tools = [
 tool_node = ToolNode(tools=tools)
 
 # Using Claude 3.5 Sonnet for master-level state tracking
-llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.3).bind_tools(tools)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3).bind_tools(tools)
 
 system_prompt = """Your name is Boomer, a Travel Concierge Agent.
 YOUR ROLE: 
